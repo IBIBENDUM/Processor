@@ -34,10 +34,13 @@ enum Code_formats
     DO(in)\
     DO(out)\
     DO(add)\
+    DO(sub)\
+    DO(mul)\
+    DO(div)\
 
 enum Command_list
 {
-    #define DO(X) X,
+    #define DO(X) X##_enum,
     COMMAND_LIST
     #undef DO
 
@@ -52,7 +55,7 @@ struct Operation
 
 constexpr Operation OPERATIONS[OPERATION_AMOUNT] =
 {
-    #define DO(X) {L ## #X,  X + 1},
+    #define DO(X) {L ## #X,  X##_enum + 1},
     COMMAND_LIST
     #undef DO
 };

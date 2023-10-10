@@ -17,11 +17,11 @@ int main()
     int* code_array = parse_file_to_commands(&input_file, &size);
     write_to_file(OUTPUT_FILE_NAME, code_array, size);
 
-    DEBUG_MSG("size = %d\n", size);
-    for (size_t i = 0; i < size; i++)
-    {
-        DEBUG_MSG("%d\n", *(code_array + i));
-    }
+    // DEBUG_MSG("size = %d\n", size);
+    // for (size_t i = 0; i < size; i++)
+    // {
+    //     DEBUG_MSG("%d\n", *(code_array + i));
+    // }
 
     destruct_file(&input_file);
 

@@ -17,6 +17,13 @@ void emit_code(int* code_array, size_t* position, const uint8_t command_code, co
     code_array[(*position)++] = arg;
 }
 
+static void delete_asm_comments(const wchar_t* str)
+{
+    wchar_t* comment_ptr = wcschr(str, L';');
+    if (comment_ptr != NULL)
+        *comment_ptr = '\0';
+}
+
 void parse_line_to_command(line* line_ptr, int* code_array, size_t* position)
 {
     const wchar_t delim[]   = L" ";
@@ -28,6 +35,8 @@ void parse_line_to_command(line* line_ptr, int* code_array, size_t* position)
         DEBUG_MSG("Empty line!\n");
         return;
     }
+
+    delete_asm_comments(line_ptr->start);
 
     DEBUG_MSG("command: %ls", line_ptr->start);
     // TODO: Remake on switch case with define
@@ -65,6 +74,8 @@ void parse_line_to_command(line* line_ptr, int* code_array, size_t* position)
             return;
         }
     }
+    fprintf(stderr, "Syntax error!");
+    return;
 }
 
 int* parse_file_to_commands(File* file, size_t* position)
