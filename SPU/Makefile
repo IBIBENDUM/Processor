@@ -4,7 +4,7 @@ CFLAGS = -Wshadow -Winit-self -Wredundant-decls -Wcast-align -Wundef -Wfloat-equ
 
 LIB_DIR = ../Libs
 BUILD_DIR = build
-EXECUTABLE = asm
+EXECUTABLE = spu
 
 SRCS = $(wildcard *.cpp)
 LIB_OBJS = $(wildcard $(LIB_DIR)/*.o)

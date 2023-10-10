@@ -4,13 +4,14 @@
 #include <stdio.h>
 #include "colors.h"
 
-#ifdef NDEBUG
-    #define DEBUG(FORMAT, ...)
+#ifdef NOTDEBUG
+    #define DEBUG_MSG(FORMAT, ...)
 #else
-    #define DEBUG(FORMAT, ...)\
+    #define DEBUG_MSG(FORMAT, ...)\
     do\
     {\
-        printf(PAINT_TEXT(COLOR_YELLOW, FORMAT), ##__VA_ARGS__);\
+        fprintf(stderr, PAINT_TEXT(COLOR_YELLOW,"[%s, %d] %s():\n"), __FILE__, __LINE__, __func__);\
+        fprintf(stderr, PAINT_TEXT(COLOR_YELLOW, FORMAT "\n"), ##__VA_ARGS__);\
     } while(0)
 #endif
 
@@ -45,7 +46,7 @@ typedef struct line_struct
 
 typedef struct File
 {
-    wchar_t* file_name;
+    const char* file_name;
     wchar_t* buffer;
     line* lines_ptrs;
     size_t line_amounts;
@@ -57,12 +58,15 @@ size_t get_char_amount(const wchar_t* const string, const wchar_t ch);
 
 size_t get_lines_amount(const wchar_t* const string);
 
-File init_file(const char* file_name);
+void tokenize_lines(File* file);
+
+void init_file(const char* file_name, File* file);
 
 void destruct_file(File* file_struct);
 
 // needs free()
 wchar_t* read_file(const char* file_name);
+int* read_bin_file(const char* file_name);
 
 // need free()
 line* parse_lines_to_arr(wchar_t* string, const size_t lines_amount);
@@ -73,7 +77,7 @@ void write_lines_to_file(line* line_ptr, size_t lines_amount, FILE* file_ptr);
 
 void write_in_dictionary_format(line* line_ptr, const size_t lines_amount, FILE* file_ptr);
 
-void print_seperator(FILE* file_ptr);
+void print_separator(FILE* file_ptr);
 
 const wchar_t* move_to_alphabet_sym(const wchar_t* str, int direction);
 

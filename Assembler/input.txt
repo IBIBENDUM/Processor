@@ -1,5 +1,4 @@
 push 40
-push 30
-add
+push rbx
 out
 HLT
