@@ -10,9 +10,11 @@
 #define COLOR_PURPLE	"\033[95m"
 #define COLOR_YELLOW	"\033[33m"
 
-#define COLOR_RESET	    "\033[0m"
+#define FONT_ITALIC     "\033[3m"
+#define FONT_UNDERLINED "\033[4m"
+#define TEXT_RESET	    "\033[0m"
 
-#define PAINT_TEXT(COLOR, TEXT) (COLOR TEXT COLOR_RESET)
+#define PAINT_TEXT(COLOR, TEXT) COLOR TEXT TEXT_RESET
 
 
 #endif

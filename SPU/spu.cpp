@@ -2,8 +2,36 @@
 #include "../Libs/stack.h"
 #include "../commands.h"
 
-
 static stack SPU_STACK = {};
+
+#define REGS_LIST\
+    DO(rax)\
+    DO(rbx)\
+    DO(rcx)\
+    DO(rdx)\
+
+enum Regs_list
+{
+    #define DO(X) X,
+    REGS_LIST
+    #undef DO
+
+    REGS_AMOUNT
+};
+
+struct Register
+{
+    const wchar_t* const name;
+    const uint8_t id;
+    int value;
+};
+
+Register regs[REGS_AMOUNT]
+{
+    #define DO(X) {L ## #X, X, 0},
+    REGS_LIST
+    #undef DO
+};
 
 void construct_spu()
 {
@@ -76,7 +104,8 @@ void out_func(int* code_array, size_t* current_shift)
     int value = 0;
     pop_stack(&SPU_STACK, &value);
     push_stack(&SPU_STACK, value);
-    fprintf(stderr, "%d", value / FLOAT_COEFFICIENT); // TODO: Add constant
+    const float out_value = (float) value / (float) FLOAT_COEFFICIENT;
+    fprintf(stderr, "%g\n", out_value);
     *current_shift += 2;
 }
 
@@ -124,7 +153,7 @@ void mul_func(int* code_array, size_t* current_shift)
     int value_2 = 0;
     pop_stack(&SPU_STACK, &value_2);
 
-    int result_value = value_2 * value_1;
+    int result_value = value_2 * value_1 / FLOAT_COEFFICIENT;
 
     push_stack(&SPU_STACK, result_value);
 
@@ -141,7 +170,7 @@ void div_func(int* code_array, size_t* current_shift)
     int value_2 = 0;
     pop_stack(&SPU_STACK, &value_2);
 
-    int result_value = value_2 / value_1 * FLOAT_COEFFICIENT;
+    int result_value = value_2 * FLOAT_COEFFICIENT / value_1 ;
 
     push_stack(&SPU_STACK, result_value);
 

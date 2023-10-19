@@ -7,6 +7,7 @@
 
 #include "../Libs/textlib.h"
 #include "../commands.h"
+#include "../Libs/colors.h"
 #include "assembler.h"
 
 const int ARG_POISON_VALUE = INT_MAX;
@@ -17,29 +18,20 @@ void emit_code(int* code_array, size_t* position, const uint8_t command_code, co
     code_array[(*position)++] = arg;
 }
 
-static void delete_asm_comments(const wchar_t* str)
+wchar_t* parse_line_to_command(line* line_ptr, int* code_array, size_t* position)
 {
-    wchar_t* comment_ptr = wcschr(str, L';');
-    if (comment_ptr != NULL)
-        *comment_ptr = '\0';
-}
-
-void parse_line_to_command(line* line_ptr, int* code_array, size_t* position)
-{
-    const wchar_t delim[]   = L" ";
+    const wchar_t delim[]   = L" ;";
     wchar_t* internal_state = NULL;
     wchar_t* op_name        = wcstok(line_ptr->start, delim, &internal_state);
 
     if (!op_name)
     {
         DEBUG_MSG("Empty line!\n");
-        return;
+        return NULL;
     }
-
-    delete_asm_comments(line_ptr->start);
-
     DEBUG_MSG("command: %ls", line_ptr->start);
     // TODO: Remake on switch case with define
+
     for (size_t op_id = 0; op_id < OPERATION_AMOUNT; op_id++)
     {
         if (wcscmp(op_name, OPERATIONS[op_id].name) == 0)
@@ -48,14 +40,9 @@ void parse_line_to_command(line* line_ptr, int* code_array, size_t* position)
             wchar_t* arg_ptr = wcstok(NULL, delim, &internal_state);
             int arg = 0; //TODO: add 2nd arg
             int reg_id = 0;
-
+            DEBUG_MSG("%ls\n", arg_ptr);
             // TODO: Add syntax errors
-            if (!arg_ptr)
-            {
-                emit_code(code_array, position, command_code, ARG_POISON_VALUE);
-                DEBUG_MSG("code: %d\n", command_code, reg_id);
-            }
-            else if (swscanf(arg_ptr, L"%d", &arg))
+            if (swscanf(arg_ptr, L"%d", &arg))
             {
                 command_code |= ARG_FORMAT_IMMED;
                 emit_code(code_array, position, command_code, arg);
@@ -64,18 +51,22 @@ void parse_line_to_command(line* line_ptr, int* code_array, size_t* position)
             else if (swscanf(arg_ptr, L"r%cx", &reg_id))
             {
                 reg_id += 1 - 'a';
-                if (1 <= reg_id && reg_id <= REGS_AMOUNT) // Or loop for id comparison?
-                {
+                // if (1 <= reg_id && reg_id <= REGS_AMOUNT) // BAH: Or loop for id comparison?
+                // {
                     command_code |= ARG_FORMAT_REG;
                     emit_code(code_array, position, command_code, reg_id);
                     DEBUG_MSG("code: %d %d\n", command_code, reg_id);
-                }
+                // }
             }
-            return;
+            else
+            {
+                emit_code(code_array, position, command_code, ARG_POISON_VALUE);
+                DEBUG_MSG("code: %d\n", command_code, reg_id);
+            }
+            return NULL;
         }
     }
-    fprintf(stderr, "Syntax error!");
-    return;
+    return op_name;
 }
 
 int* parse_file_to_commands(File* file, size_t* position)
@@ -85,7 +76,13 @@ int* parse_file_to_commands(File* file, size_t* position)
     int* code_array = (int*) calloc(file->line_amounts * 2, sizeof(int)); // Assumed that there is no more than two args
     for (size_t i = 0; i < file->line_amounts; i++)
     {
-        parse_line_to_command(file->lines_ptrs + i, code_array, position);
+        line* line_ptr = file->lines_ptrs + i;
+        wchar_t* ret_val = NULL;
+        if ((ret_val = parse_line_to_command(line_ptr, code_array, position)) != NULL)
+        {
+            fprintf(stderr, PAINT_TEXT(COLOR_WHITE, "%s:%zu:%zu: "), file->file_name, i, ret_val - line_ptr->start + 1);
+            fprintf(stderr, PAINT_TEXT(COLOR_RED, "Syntax error:") PAINT_TEXT(COLOR_WHITE, " \'%ls\' ") "was not declared in this scope\n", ret_val);
+        }
     }
     return code_array;
 }
