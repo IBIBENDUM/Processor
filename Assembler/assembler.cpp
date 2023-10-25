@@ -21,7 +21,6 @@
 #endif
 
 const int ARG_POISON_VALUE = INT_MAX;
-const size_t LABELS_MAX_AMOUNT = 16;
 
 enum cmd_error
 {
@@ -42,15 +41,17 @@ struct Command
     bool has_imm;
 };
 
+const size_t MAX_LABEL_NAME_LENGTH = 20;
 struct Label
 {
-    int id;
-    wchar_t* name;
+    int op_id = 0;
+    wchar_t name[MAX_LABEL_NAME_LENGTH] = {};
 };
 
+const size_t LABELS_MAX_AMOUNT = 16;
 struct Labels
 {
-    Label labels[LABELS_MAX_AMOUNT] = {};
+    Label labels_arr[LABELS_MAX_AMOUNT] = {};
     size_t amount = 0;
 };
 
@@ -154,17 +155,31 @@ static cmd_error parse_args(const int args_bitmask, Command* cmd)
 
 }
 
-static cmd_error emit_label(wchar_t* label_name_ptr, size_t op_name_len)
+static cmd_error emit_label(wchar_t* label_name_ptr, const size_t op_name_len, const size_t position, Labels* labels)
 {
-    const size_t MAX_LABEL_NAME_LENGTH = 20;
-    if (op_name_len > MAX_LABEL_NAME_LENGTH)
+    if (op_name_len > MAX_LABEL_NAME_LENGTH - 1)
         return CMD_TOO_LONG_MARK;
 
-    wchar_t label_name[MAX_LABEL_NAME_LENGTH];
+    for (size_t id = 0; id < labels->amount; id++)
+    {
+        if (wcsncmp(labels->labels_arr[id].name, label_name_ptr, op_name_len) == 0)
+        {
+            labels->labels_arr[id].op_id = (int) position + 1;
+            return CMD_NO_ERR;
+        }
+    }
+    ASM_DEBUG_MSG("op_name_len = %d", op_name_len);
+    wcsncpy(labels->labels_arr[labels->amount].name, label_name_ptr, op_name_len - 1);
+    labels->labels_arr[labels->amount].op_id = position + 1;
+    ASM_DEBUG_MSG("mark_name = <%ls>\n", labels->labels_arr[0].name);
+    ASM_DEBUG_MSG("mark_name = <%d>\n", labels->labels_arr[0].name[0]);
+
+    labels->amount++;
+
     return CMD_NO_ERR;
 }
 
-static cmd_error parse_line_to_command(Command* cmd, line* line_ptr)
+static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_t position, Labels* labels)
 {
     ASM_DEBUG_MSG("==================================");
 
@@ -181,9 +196,12 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr)
         return CMD_NO_ERR;
     }
 
+    // BAH: make by strcspn?
     if (op_name[op_name_len - 1] == ':')
     {
-        return emit_label(op_name, op_name_len);
+        emit_label(op_name, op_name_len, position, labels);
+        ASM_DEBUG_MSG("mark_name = <%d>\n", labels->labels_arr[0].name[0]);
+        return CMD_NO_ERR;
     }
 
     #define DEF_CMD(NAME, ARGS_BITMASK, ...)\
@@ -217,21 +235,22 @@ static int* parse_file_to_commands(File* file, size_t* position)
     int* code_array = (int*) calloc(line_amount * MAX_ARGS_AMOUNT, sizeof(int));
     ASM_DEBUG_MSG("line_amount = %lld", line_amount);
 
+    Labels labels = {};
+
     for (size_t i = 0; i < line_amount; i++)
     {
         line* line_ptr = file->lines_ptrs + i;
-        Command cmd = {
-                        .cmd_id = 0,
-                        .reg_id = 0,
-                        .imm = 0,
-                        .has_reg = false,
-                        .has_imm = false
-                      };
+        Command cmd = {};
 
-        if (parse_line_to_command(&cmd, line_ptr) == CMD_NO_ERR)
+        if (parse_line_to_command(&cmd, line_ptr, *position, &labels) == CMD_NO_ERR)
             emit_code(code_array, position, &cmd);
         else
             printf(PAINT_TEXT(COLOR_RED, "ERROR!!!\n"));
+    }
+    for (int i = 0; i < labels.amount; i++)
+    {
+        printf("mark_name = <%ls>\n", labels.labels_arr[i].name);
+        printf("op_id = <%d>\n", labels.labels_arr[i].op_id);
     }
     return code_array;
 }
