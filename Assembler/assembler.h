@@ -3,10 +3,16 @@
 
 #include "../Libs/textlib.h"
 
-void parse_file_to_commands(File* file);
+enum asm_error
+{
+    NO_ERR,
+    FILE_OPEN_ERR,
+    FILE_CLOSE_ERR,
+    TOO_MANY_ARGS_ERR
+};
 
-void write_to_file(const char* output_file_name, int* code_array, const size_t size);
+asm_error text_to_asm(File* input_file, const char* output_file_name);
 
-int* parse_file_to_commands(File* file, size_t* position);
+void print_asm_err(asm_error err_code);
 
 #endif

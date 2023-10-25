@@ -271,6 +271,45 @@ const wchar_t* move_to_alphabet_sym(const wchar_t* str, const int direction)
     return str;
 }
 
+size_t get_word_len(wchar_t* string, const wchar_t* delim)
+{
+    return wcscspn(string, delim);
+}
+
+wchar_t* move_to_non_space_sym(wchar_t* str)
+{
+    assert(str);
+
+    while (*(str) != L'\n' && *(str) != L'\0' && iswspace(*(str)))
+        str++;
+
+    return str;
+}
+
+wchar_t* get_word(wchar_t* string, size_t* word_len_ptr)
+{
+    static wchar_t* backup_string;
+
+    // printf("%ls\n", backup_string);
+    if (!string)
+        string = backup_string;
+
+    if (!string)
+        return NULL;
+
+    string = move_to_non_space_sym(string);
+    size_t word_len = get_word_len(string, L" ");
+    if (word_len_ptr)
+        *word_len_ptr = word_len;
+
+    if (*(string + word_len) == '\0')
+        backup_string = NULL;
+    else
+        backup_string = string + word_len + 1;
+
+    return string;
+}
+
 static int compare_lines(const wchar_t* line_1_ptr, const wchar_t* line_2_ptr, const int direction)
 {
     assert(line_1_ptr);

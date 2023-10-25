@@ -1,6 +1,2 @@
-push 10
-push 3
-mul
-          aboba
-out
-HLT
+mark:
+jmp mark

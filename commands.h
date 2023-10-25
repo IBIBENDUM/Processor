@@ -1,46 +1,11 @@
-#ifndef COMMANDS_H
-#define COMMANDS_H
+DEF_CMD(push,  0b111)
+DEF_CMD( pop,  0b110)
+DEF_CMD( jmp,  0b001)
+DEF_CMD( HLT,  0b000)
+DEF_CMD(  in,  0b000)
+DEF_CMD( out,  0b000)
+DEF_CMD( add,  0b000)
+DEF_CMD( sub,  0b000)
+DEF_CMD( mul,  0b000)
+DEF_CMD( div,  0b000)
 
-#include <inttypes.h>
-
-enum Code_masks
-{
-    COMMAND_MASK     = 0b00011111,
-    ARG_FORMAT_IMMED = 0b00100000,
-    ARG_FORMAT_REG   = 0b01000000
-};
-
-#define COMMAND_LIST\
-    DO(HLT)\
-    DO(push)\
-    DO(pop)\
-    DO(in)\
-    DO(out)\
-    DO(add)\
-    DO(sub)\
-    DO(mul)\
-    DO(div)\
-
-enum Command_list
-{
-    #define DO(X) X##_enum,
-    COMMAND_LIST
-    #undef DO
-
-    OPERATION_AMOUNT
-};
-
-struct Operation
-{
-    const wchar_t* const name;
-    const short id;
-};
-
-constexpr Operation OPERATIONS[OPERATION_AMOUNT] =
-{
-    #define DO(X) {L ## #X,  X##_enum + 1},
-    COMMAND_LIST
-    #undef DO
-};
-
-#endif
