@@ -207,7 +207,7 @@ void execute_program(cmd_t* code_array)
     {
         switch (cmd & ID_MASK)
         {
-            #define DEF_CMD(NAME, ARG_MASK, ...) case OPERATIONS[NAME##_enum].id: SPU_DEBUG_MSG("id = %d\n", OPERATIONS[NAME##_enum].id); ip += sizeof(cmd_t); __VA_ARGS__; break;
+            #define DEF_CMD(NAME, ARG_MASK, ...) case OPERATIONS[NAME##_enum].id: SPU_DEBUG_MSG("name = %s, id = %d\n", #NAME, OPERATIONS[NAME##_enum].id); ip += sizeof(cmd_t); __VA_ARGS__; break;
 
             #include "../commands.h"
             #undef DEF_CMD

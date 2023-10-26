@@ -1,7 +1,7 @@
 push 1
-push 2
-bebra:
+push 1
+add
 out
-jmp bebra
+push 5
+ja 8
 HLT
-push 3
