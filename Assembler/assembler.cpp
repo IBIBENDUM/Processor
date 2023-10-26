@@ -27,6 +27,7 @@ enum cmd_error
     CMD_NO_ERR,
     CMD_EMPTY_LINE,
     CMD_LABEL_LINE,
+    CMD_REPEATED_MARK_ERR,
     CMD_WRONG_NAME_ERR,
     CMD_WRONG_ARG_ERR,
     CMD_TOO_LONG_MARK_ERR
@@ -223,11 +224,11 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
     return CMD_WRONG_NAME_ERR;
 }
 
-static void set_labels_names(File* file, Labels* labels)
+static cmd_error set_labels_names(File* file, Labels* labels)
 {
-    for (size_t i = 0; i < file->line_amounts; i++)
+    for (size_t line_idx = 0; line_idx < file->line_amounts; line_idx++)
     {
-        line* line_ptr = file->lines_ptrs + i;
+        line* line_ptr = file->lines_ptrs + line_idx;
         remove_comment(line_ptr);
 
         size_t op_name_len = 0;
@@ -237,11 +238,17 @@ static void set_labels_names(File* file, Labels* labels)
         {
             if (op_name[op_name_len - 1] == ':')
             {
+                for (size_t label_idx = 0; label_idx < labels->amount; label_idx++)
+                {
+                    if (wcsncmp(labels->labels_arr[label_idx].name, op_name, op_name_len - 1) == 0)
+                        return CMD_REPEATED_MARK_ERR;
+                }
                 wcsncpy(labels->labels_arr[labels->amount].name, op_name, op_name_len - 1);
                 labels->amount++;
             }
         }
     }
+    return CMD_NO_ERR;
 }
 
 static int* parse_file_to_commands(File* file, size_t* position)
