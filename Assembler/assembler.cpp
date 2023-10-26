@@ -25,9 +25,11 @@ const int ARG_POISON_VALUE = INT_MAX;
 enum cmd_error
 {
     CMD_NO_ERR,
-    WRONG_CMD_NAME_ERR,
-    WRONG_ARG_ERR,
-    CMD_TOO_LONG_MARK
+    CMD_EMPTY_LINE,
+    CMD_LABEL_LINE,
+    CMD_WRONG_NAME_ERR,
+    CMD_WRONG_ARG_ERR,
+    CMD_TOO_LONG_MARK_ERR
 };
 
 struct Command
@@ -60,16 +62,13 @@ static void emit_code(int* code_array, size_t* position, Command* cmd)
     assert(code_array);
     assert(position);
 
-    printf(PAINT_TEXT(COLOR_RED, "EMIT_CODE\n"));
     // BAH: Make uneven code
-    ASM_DEBUG_MSG("cmd_id = %d", cmd->cmd_id);
     code_array[(*position)++] = cmd->cmd_id;
 
     // ASM_DEBUG_MSG("cmd_id = <%ls>", cmd->cmd_id);
     if (cmd->has_reg)
         code_array[(*position)++] = cmd->reg_id;
 
-    ASM_DEBUG_MSG("cmd_imm = %d", cmd->imm);
     if (cmd->has_imm)
         code_array[(*position)++] = cmd->imm;
 }
@@ -81,36 +80,33 @@ static void remove_comment(line* line_ptr)
         *comment_sym = L'\0';
 }
 
-static cmd_error get_arg(Command* cmd, Labels* labels)
+static cmd_error get_arg(Command* cmd, const int args_bitmask, Labels* labels)
 {
     size_t arg_len = 0;
     wchar_t* arg_ptr = get_word(NULL, &arg_len);
     ASM_DEBUG_MSG("arg_len = %lld", arg_len);
+
     if (arg_len == 0)
     {
-        return WRONG_ARG_ERR;
+        return CMD_WRONG_ARG_ERR;
     }
 
     const wchar_t delim_char = arg_ptr[arg_len];
-    ASM_DEBUG_MSG("delim_char = %d", delim_char);
-    ASM_DEBUG_MSG("BEFORE: arg_ptr = <%ls>", arg_ptr);
     arg_ptr[arg_len] = L'\0';
-    ASM_DEBUG_MSG("AFTER: arg_ptr = <%ls>", arg_ptr);
 
     bool arg_read = false;
     wchar_t reg_id[2] = {};
     int imm = 0;
 
     // BAH: Make read not by scanf
-    if (arg_len == 3 && swscanf(arg_ptr, L"r%1[a-d]x", &reg_id))
+    if ((args_bitmask & (ARG_REG_MASK >> ARGS_MASK_OFFSET)) && (arg_len == 3) && (swscanf(arg_ptr, L"r%1[a-d]x", &reg_id)))
     {
         ASM_DEBUG_MSG("Reg\n");
-
         cmd->reg_id = reg_id[0] - L'a' + 1;
         cmd->has_reg = true;
         arg_read = true;
     }
-    else if (swscanf(arg_ptr, L"%d", &imm))
+    else if ((args_bitmask & (ARG_IMM_MASK >> ARGS_MASK_OFFSET)) && swscanf(arg_ptr, L"%d", &imm))
     {
         ASM_DEBUG_MSG("Imm\n");
         cmd->has_imm = true;
@@ -132,7 +128,7 @@ static cmd_error get_arg(Command* cmd, Labels* labels)
     arg_ptr[arg_len] = delim_char;
 
     if (!arg_read)
-        return WRONG_ARG_ERR;
+        return CMD_WRONG_ARG_ERR;
 
     return CMD_NO_ERR;
 }
@@ -145,7 +141,7 @@ static cmd_error parse_args(const int args_bitmask, Command* cmd, Labels* labels
         return CMD_NO_ERR;
 
     //BAH: Remake for any count of args
-    cmd_error get_arg_ret_val = get_arg(cmd, labels);
+    cmd_error get_arg_ret_val = get_arg(cmd, args_bitmask, labels);
     if (get_arg_ret_val != CMD_NO_ERR)
         return get_arg_ret_val;
 
@@ -158,7 +154,7 @@ static cmd_error parse_args(const int args_bitmask, Command* cmd, Labels* labels
     }
     if (operation_len == 1 && operation_ptr[0] == '+')
     {
-        get_arg_ret_val = get_arg(cmd, labels);
+        get_arg_ret_val = get_arg(cmd, args_bitmask, labels);
         if (get_arg_ret_val == CMD_NO_ERR)
         {
             size_t trash_len = 0;
@@ -167,14 +163,13 @@ static cmd_error parse_args(const int args_bitmask, Command* cmd, Labels* labels
                 return get_arg_ret_val;
         }
     }
-    return WRONG_ARG_ERR;
-
+    return CMD_WRONG_ARG_ERR;
 }
 
 static cmd_error emit_label(wchar_t* label_name_ptr, const size_t op_name_len, const size_t position, Labels* labels)
 {
     if (op_name_len > MAX_LABEL_NAME_LENGTH - 1)
-        return CMD_TOO_LONG_MARK;
+        return CMD_TOO_LONG_MARK_ERR;
 
     for (size_t id = 0; id < labels->amount; id++)
     {
@@ -184,33 +179,29 @@ static cmd_error emit_label(wchar_t* label_name_ptr, const size_t op_name_len, c
             return CMD_NO_ERR;
         }
     }
-    return WRONG_ARG_ERR;
+    return CMD_WRONG_ARG_ERR;
 }
 
 static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_t position, Labels* labels)
 {
-    ASM_DEBUG_MSG("==================================");
-
-    // remove_comment(line_ptr);
 
     size_t op_name_len = 0;
     wchar_t* op_name = get_word(line_ptr->start, &op_name_len);
-    ASM_DEBUG_MSG("op_name = <%ls>", op_name);
-    ASM_DEBUG_MSG("op_name_len = %lld", op_name_len);
 
     if (op_name_len == 0)
     {
         ASM_DEBUG_MSG("Empty line!\n");
-        return WRONG_CMD_NAME_ERR;
+        return CMD_EMPTY_LINE;
     }
 
     // BAH: make by strcspn?
     if (op_name[op_name_len - 1] == ':')
     {
         emit_label(op_name, op_name_len, position, labels);
-        return WRONG_CMD_NAME_ERR;
+        return CMD_LABEL_LINE;
     }
 
+    ASM_DEBUG_MSG("==================================");
     #define DEF_CMD(NAME, ARGS_BITMASK, ...)\
         do {\
             if (wcsncmp(op_name, L ## #NAME, op_name_len) == 0)\
@@ -229,7 +220,7 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
 
     printf(PAINT_TEXT(COLOR_RED, "NO CMD NAME\n"));
 
-    return WRONG_CMD_NAME_ERR;
+    return CMD_WRONG_NAME_ERR;
 }
 
 static void set_labels_names(File* file, Labels* labels)
@@ -271,16 +262,13 @@ static int* parse_file_to_commands(File* file, size_t* position)
     {
         line* line_ptr = file->lines_ptrs + i;
         Command cmd = {};
+        cmd_error err = CMD_NO_ERR;
 
-        if (parse_line_to_command(&cmd, line_ptr, *position, &labels) == CMD_NO_ERR)
+        err = parse_line_to_command(&cmd, line_ptr, *position, &labels);
+        if (err == CMD_NO_ERR)
             emit_code(code_array, position, &cmd);
-        else
+        else if (err > 3)
             printf(PAINT_TEXT(COLOR_RED, "ERROR!!!\n"));
-    }
-    for (int i = 0; i < labels.amount; i++)
-    {
-        printf("mark_name = <%ls>\n", labels.labels_arr[i].name);
-        printf("op_id = <%d>\n", labels.labels_arr[i].op_id);
     }
     return code_array;
 }
