@@ -1,12 +1,13 @@
 #include <stdlib.h>
+#include <inttypes.h>
 
 #include "../Libs/textlib.h"
 #include "spu.h"
 
-const char* code_file_name = "../output.bin";
+const char* code_file_name = "../output.asm";
 int main()
 {
-    int* code_array = read_bin_file(code_file_name);
+    cmd_t* code_array = (cmd_t*) read_bin_file(code_file_name);
     construct_spu();
 
     execute_program(code_array);

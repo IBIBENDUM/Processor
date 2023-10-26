@@ -43,27 +43,27 @@ wchar_t* read_file(const char* file_name)
     _setmode(_fileno(file_ptr), SET_MODE_CONST);
 
     HANDLE_ERROR(file_ptr, "Couldn't open file", NULL);
-    DEBUG_MSG("File opened\n");
+    TL_DEBUG_MSG("File opened\n");
 
     const ssize_t descriptor = fileno(file_ptr);
     HANDLE_ERROR(descriptor != -1, "Couldn't get file descriptor", NULL);
 
     const ssize_t size = get_file_size(descriptor);
     HANDLE_ERROR(size != -1, "Couldn't get file size", NULL);
-    DEBUG_MSG("Got size\n");
+    TL_DEBUG_MSG("Got size\n");
 
     wchar_t* buffer = (wchar_t*) calloc(size + 1, sizeof(wchar_t));
     HANDLE_ERROR(buffer, "Error at memory allocation", NULL);
-    DEBUG_MSG("Buffer allocated\n");
+    TL_DEBUG_MSG("Buffer allocated\n");
 
     const size_t fread_ret_val = fread(buffer, sizeof(wchar_t), size, file_ptr);
     HANDLE_ERROR(fread_ret_val, "Error at file reading", NULL);
-    DEBUG_MSG("File read\n");
+    TL_DEBUG_MSG("File read\n");
 
     const size_t fclose_ret_val = fclose(file_ptr);
     file_ptr = NULL;
     HANDLE_ERROR(!fclose_ret_val, "Error at closing file", NULL);
-    DEBUG_MSG("File closed\n");
+    TL_DEBUG_MSG("File closed\n");
 
     return buffer;
 }
@@ -73,27 +73,27 @@ int* read_bin_file(const char* file_name)
     FILE* file_ptr = fopen(file_name, "rb");
 
     HANDLE_ERROR(file_ptr, "Couldn't open file", NULL);
-    DEBUG_MSG("File opened\n");
+    TL_DEBUG_MSG("File opened\n");
 
     const ssize_t descriptor = fileno(file_ptr);
     HANDLE_ERROR(descriptor != -1, "Couldn't get file descriptor", NULL);
 
     const ssize_t size = get_file_size(descriptor);
     HANDLE_ERROR(size != -1, "Couldn't get file size", NULL);
-    DEBUG_MSG("Got size\n");
+    TL_DEBUG_MSG("Got size\n");
 
     int* buffer = (int*) calloc(size + 1, sizeof(int));
     HANDLE_ERROR(buffer, "Error at memory allocation", NULL);
-    DEBUG_MSG("Buffer allocated\n");
+    TL_DEBUG_MSG("Buffer allocated\n");
 
     const size_t fread_ret_val = fread(buffer, sizeof(int), size, file_ptr);
     HANDLE_ERROR(fread_ret_val, "Error at file reading", NULL);
-    DEBUG_MSG("File read\n");
+    TL_DEBUG_MSG("File read\n");
 
     const size_t fclose_ret_val = fclose(file_ptr);
     file_ptr = NULL;
     HANDLE_ERROR(!fclose_ret_val, "Error at closing file", NULL);
-    DEBUG_MSG("File closed\n");
+    TL_DEBUG_MSG("File closed\n");
 
     return buffer;
 }
@@ -214,7 +214,7 @@ void write_lines_to_file(line* line_ptr, size_t lines_amount, FILE* file_ptr)
 {
     assert(line_ptr);
     assert(file_ptr);
-    DEBUG_MSG("%s:\n", __PRETTY_FUNCTION__);
+    TL_DEBUG_MSG("%s:\n", __PRETTY_FUNCTION__);
     for (size_t i = 0; i < lines_amount; i++)
         print_line(line_ptr + i, file_ptr);
 }
@@ -323,17 +323,17 @@ static int compare_lines(const wchar_t* line_1_ptr, const wchar_t* line_2_ptr, c
     {
         if (*line_1 == L'\n')
         {
-            DEBUG_MSG("return 0\n");
-            DEBUG_MSG("--------------------------\n");
+            TL_DEBUG_MSG("return 0\n");
+            TL_DEBUG_MSG("--------------------------\n");
             return 0;
         }
-        DEBUG_MSG("ch1 = %d ch2 = %d\n", *line_1, *line_2);
+        TL_DEBUG_MSG("ch1 = %d ch2 = %d\n", *line_1, *line_2);
         line_1 += direction;
         line_2 += direction;
     }
 
-    DEBUG_MSG("return %d\n", *line_1 - *line_2);
-    DEBUG_MSG("--------------------------\n");
+    TL_DEBUG_MSG("return %d\n", *line_1 - *line_2);
+    TL_DEBUG_MSG("--------------------------\n");
     return *line_1 - *line_2;
 }
 

@@ -5,7 +5,7 @@
 #include "assembler.h"
 
 const char* INPUT_FILE_NAME = "input.txt";
-const char* OUTPUT_FILE_NAME = "output.asm";
+const char* OUTPUT_FILE_NAME = "../output.asm";
 
 int main()
 {

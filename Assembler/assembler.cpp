@@ -7,6 +7,7 @@
 
 #include "../Libs/textlib.h"
 #include "../Libs/colors.h"
+#include "../Libs/logs.h"
 #include "../common.h"
 #include "assembler.h"
 
@@ -64,9 +65,12 @@ static void emit_code(int* code_array, size_t* position, Command* cmd)
     assert(position);
 
     // BAH: Make uneven code
-    code_array[(*position)++] = cmd->cmd_id;
+    // ASM_DEBUG_MSG("cmd_id = <%d>", cmd->cmd_id);
+    // ASM_DEBUG_MSG("has_imm = <%d>", cmd->has_imm);
+    int cmd_code = cmd->cmd_id | (ARG_IMM_MASK * cmd->has_imm) | (ARG_REG_MASK * cmd->has_reg);
+    code_array[(*position)++] = cmd_code;
+    // ASM_DEBUG_MSG("cmd_code = <%d>", cmd_code);
 
-    // ASM_DEBUG_MSG("cmd_id = <%ls>", cmd->cmd_id);
     if (cmd->has_reg)
         code_array[(*position)++] = cmd->reg_id;
 
@@ -185,7 +189,6 @@ static cmd_error emit_label(wchar_t* label_name_ptr, const size_t op_name_len, c
 
 static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_t position, Labels* labels)
 {
-
     size_t op_name_len = 0;
     wchar_t* op_name = get_word(line_ptr->start, &op_name_len);
 

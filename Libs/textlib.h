@@ -3,17 +3,14 @@
 
 #include <stdio.h>
 #include "colors.h"
+#include "logs.h"
 
-#ifdef NOTDEBUG
-    #define DEBUG_MSG(FORMAT, ...)
+#ifdef TL_DEBUG
+    #define TL_DEBUG_MSG(...) DEBUG_MSG(__VA_ARGS__)
 #else
-    #define DEBUG_MSG(FORMAT, ...)\
-    do\
-    {\
-        fprintf(stderr, PAINT_TEXT(COLOR_YELLOW,"[%s, %d] %s():\n"), __FILE__, __LINE__, __func__);\
-        fprintf(stderr, PAINT_TEXT(COLOR_YELLOW, FORMAT "\n"), ##__VA_ARGS__);\
-    } while(0)
+    #define TL_DEBUG_MSG(...)
 #endif
+
 
 #define FREE_AND_NULL(ptr)\
 do{\

@@ -3,6 +3,9 @@
 
 #include <inttypes.h>
 
+typedef int arg_t;
+typedef int cmd_t;
+
 const int MAX_ARGS_AMOUNT = 3;
 
 const int ARGS_MASK_OFFSET = 5;
@@ -11,7 +14,8 @@ enum Op_code_masks
 {
     ARG_IMM_MASK   = 0b00100000,
     ARG_REG_MASK   = 0b01000000,
-    ARG_RAM_MASK   = 0b10000000
+    ARG_RAM_MASK   = 0b10000000,
+    ID_MASK        = 0b00011111
 };
 
 enum Cmds_ids
