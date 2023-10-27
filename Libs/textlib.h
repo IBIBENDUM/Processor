@@ -88,7 +88,7 @@ size_t get_word_len(wchar_t* string, const wchar_t* delim, wchar_t* symbol);
 
 wchar_t* get_word(wchar_t* string, size_t* word_len);
 
-const wchar_t* move_to_non_space_sym(const wchar_t* str);
+wchar_t* move_to_non_space_sym(wchar_t* str);
 
 void print_tatarstan_symbolism(FILE* file_ptr);
 

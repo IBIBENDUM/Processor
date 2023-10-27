@@ -17,9 +17,6 @@
     #define SPU_ERROR_MSG(...)
 #endif
 
-// BAH: Remove global variable
-static stack SPU_STACK = {};
-
 #define REGS_LIST\
     DEF_REG(rax)\
     DEF_REG(rbx)\
@@ -39,32 +36,45 @@ struct Register
 {
     const wchar_t* const name;
     const uint8_t id;
-    int value;
+    double value;
 };
+
+// BAH: Remove global variable
+static stack SPU_STACK = {};
+static stack RAM_STACK = {};
 
 void construct_spu()
 {
     init_stack(SPU_STACK);
+    init_stack(RAM_STACK);
 }
 
 void destruct_spu()
 {
     destruct_stack(&SPU_STACK);
+    destruct_stack(&RAM_STACK);
 }
 
-arg_t get_bin_arg(const cmd_t* code, ssize_t* ip, Register* regs)
+
+
+arg_t* get_bin_arg(const cmd_t* code, ssize_t* ip, Register* regs)
 {
     cmd_t cmd = *(arg_t*)((uint8_t*) code + *ip - sizeof(cmd_t));
+    arg_t* res = 0;
 
-    arg_t res = 0;
     if (cmd & ARG_IMM_MASK)
     {
-        res += *(arg_t*)((uint8_t*) code + *ip);
+        res = (arg_t*)((uint8_t*) code + *ip);
         *ip += sizeof(arg_t);
     }
     if (cmd & ARG_REG_MASK)
     {
-        res += regs[*(arg_t*)((uint8_t*) code + *ip)].value;
+        res = (arg_t*) &(regs[*(arg_t*)((uint8_t*) code + *ip)].value);
+        *ip += sizeof(arg_t);
+    }
+    if (cmd & ARG_RAM_MASK)
+    {
+        res = (arg_t*) &RAM_STACK.data[*res];
         *ip += sizeof(arg_t);
     }
     return res;
@@ -81,6 +91,7 @@ void execute_program(cmd_t* code_array)
 
     ssize_t ip = 0;
     cmd_t cmd = *((uint8_t*) code_array + ip);
+
     while (ip > -1)
     {
         dump_stack(stderr, &SPU_STACK, 0);

@@ -11,14 +11,13 @@
 #include "../common.h"
 #include "assembler.h"
 
-
-// BAH: remake this
 #define ASM_DEBUG
-
 #ifdef ASM_DEBUG
-    #define ASM_DEBUG_MSG(...) DEBUG_MSG(__VA_ARGS__)
+    #define ASM_DEBUG_MSG(...) DEBUG_MSG(COLOR_YELLOW, __VA_ARGS__)
+    #define ASM_ERROR_MSG(...) DEBUG_MSG(COLOR_RED, __VA_ARGS__)
 #else
     #define ASM_DEBUG_MSG(...)
+    #define ASM_ERROR_MSG(...)
 #endif
 
 const int ARG_POISON_VALUE = INT_MAX;
@@ -41,6 +40,8 @@ struct Command
     int imm;
 
     bool has_ram;
+    bool is_ram_opened;
+    bool is_ram_ended;
     bool has_reg;
     bool has_imm;
 };
@@ -85,10 +86,10 @@ static void remove_comment(line* line_ptr)
         *comment_sym = L'\0';
 }
 
-static cmd_error get_arg(Command* cmd, const int args_bitmask, Labels* labels)
+static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, const int args_bitmask, Labels* labels)
 {
     size_t arg_len = 0;
-    wchar_t* arg_ptr = get_word(NULL, &arg_len);
+    wchar_t* arg_ptr = get_word(arg_start_ptr, &arg_len);
     ASM_DEBUG_MSG("arg_len = %lld", arg_len);
 
     if (arg_len == 0)
@@ -102,8 +103,6 @@ static cmd_error get_arg(Command* cmd, const int args_bitmask, Labels* labels)
     bool arg_read = false;
     wchar_t reg_id[2] = {};
     int imm = 0;
-
-    // BAH: Make read not by scanf
     if ((args_bitmask & (ARG_REG_MASK >> ARGS_MASK_OFFSET)) && (arg_len == 3) && (swscanf(arg_ptr, L"r%1[a-d]x", &reg_id)))
     {
         ASM_DEBUG_MSG("Reg\n");
@@ -138,37 +137,58 @@ static cmd_error get_arg(Command* cmd, const int args_bitmask, Labels* labels)
     return CMD_NO_ERR;
 }
 
-static cmd_error parse_args(const int args_bitmask, Command* cmd, Labels* labels)
+static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cmd, Labels* labels)
 {
     assert(cmd);
 
     if (!args_bitmask)
         return CMD_NO_ERR;
 
-    //BAH: Remake for any count of args
-    cmd_error get_arg_ret_val = get_arg(cmd, args_bitmask, labels);
-    if (get_arg_ret_val != CMD_NO_ERR)
-        return get_arg_ret_val;
-
-    size_t operation_len = 0;
-    wchar_t* operation_ptr = get_word(NULL, &operation_len);
-
-    if (operation_len == 0)
+    ASM_DEBUG_MSG("%ls", op_ptr);
+    size_t left_br_pos = 0;
+    size_t right_br_pos = 0;
+    if (args_bitmask & (ARG_RAM_MASK >> ARGS_MASK_OFFSET))
     {
-        return CMD_NO_ERR;
-    }
-    if (operation_len == 1 && operation_ptr[0] == '+')
-    {
-        get_arg_ret_val = get_arg(cmd, args_bitmask, labels);
-        if (get_arg_ret_val == CMD_NO_ERR)
+        swscanf(op_ptr, L" [%n%*[^]]%n ", &left_br_pos, &right_br_pos);
+        if (right_br_pos)
         {
-            size_t trash_len = 0;
-            wchar_t* trash_ptr = get_word(NULL, &trash_len);
-            if (trash_len == 0)
-                return get_arg_ret_val;
+            ASM_DEBUG_MSG("cmd->has_ram = true");
+            cmd->has_ram = true;
         }
     }
-    return CMD_WRONG_ARG_ERR;
+
+    if (cmd->has_ram)
+    {
+        op_ptr[left_br_pos - 1] = L'\0';
+        op_ptr[right_br_pos] = L'\0';
+        ASM_DEBUG_MSG("%ls", op_ptr + left_br_pos);
+    }
+
+    cmd_error err = CMD_NO_ERR;
+    err = get_arg(op_ptr + left_br_pos, cmd, args_bitmask, labels);
+    if (err != CMD_NO_ERR)
+        return err;
+
+    size_t operator_pos = wcscspn(op_ptr + left_br_pos, L"+");
+    if (operator_pos == wcslen(op_ptr + left_br_pos))
+        operator_pos = 0;
+
+    ASM_DEBUG_MSG("%ls", op_ptr + left_br_pos);
+    ASM_DEBUG_MSG("operator_pos = %d", operator_pos);
+
+    if (operator_pos)
+    {
+        err = get_arg(op_ptr + left_br_pos + operator_pos + 1, cmd, args_bitmask, labels);
+    }
+
+    if (cmd->has_ram)
+    {
+        op_ptr[left_br_pos - 1] = L'[';
+        op_ptr[right_br_pos] = L']';
+        ASM_DEBUG_MSG("%ls", op_ptr + left_br_pos - 1);
+    }
+
+    return err;
 }
 
 static cmd_error emit_label(wchar_t* label_name_ptr, const size_t op_name_len, const size_t position, Labels* labels)
@@ -198,13 +218,6 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
         return CMD_EMPTY_LINE;
     }
 
-    // BAH: make by strcspn?
-    if (op_name[op_name_len - 1] == ':')
-    {
-        emit_label(op_name, op_name_len, position, labels);
-        return CMD_LABEL_LINE;
-    }
-
     ASM_DEBUG_MSG("==================================");
     #define DEF_CMD(NAME, ARGS_BITMASK, ...)\
         do {\
@@ -212,7 +225,7 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
             {\
                 const int id = OPERATIONS[NAME ## _enum].id;\
                 cmd->cmd_id = id;\
-                cmd_error parse_args_ret_val = parse_args(ARGS_BITMASK, cmd, labels);\
+                cmd_error parse_args_ret_val = parse_args(ARGS_BITMASK, op_name + op_name_len, cmd, labels);\
                 ASM_DEBUG_MSG("parse_args = %d\n", parse_args_ret_val);\
                 ASM_DEBUG_MSG("code: ram %d id %d reg %d imm %d\n", cmd->has_ram, cmd->cmd_id, cmd->reg_id, cmd->imm);\
                 \
@@ -222,7 +235,16 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
     #include "../commands.h"
     #undef DEF_CMD
 
-    printf(PAINT_TEXT(COLOR_RED, "NO CMD NAME\n"));
+    ASM_DEBUG_MSG("%ls", line_ptr->start);
+    wchar_t* mark_end_ptr = wcschr(line_ptr->start, L':');
+    if (mark_end_ptr && *move_to_non_space_sym(mark_end_ptr + 1) == L'\0')
+    {
+        emit_label(op_name, op_name_len, position, labels);
+        ASM_DEBUG_MSG("LABEL LINE");
+        return CMD_LABEL_LINE;
+    }
+
+    ASM_ERROR_MSG("NO CMD NAME\n");
 
     return CMD_WRONG_NAME_ERR;
 }
@@ -261,7 +283,9 @@ static int* parse_file_to_commands(File* file, size_t* position)
 
     tokenize_lines(file);
     const size_t line_amount = file->line_amounts;
-    int* code_array = (int*) calloc(line_amount * MAX_ARGS_AMOUNT, sizeof(int));
+
+    const size_t max_arg_len = (sizeof(cmd_t) > sizeof(arg_t)) ? sizeof(cmd_t) : sizeof(arg_t);
+    int* code_array = (int*) calloc(line_amount * MAX_ARGS_AMOUNT, max_arg_len);
     ASM_DEBUG_MSG("line_amount = %lld", line_amount);
 
     Labels labels = {};
@@ -278,7 +302,7 @@ static int* parse_file_to_commands(File* file, size_t* position)
         if (err == CMD_NO_ERR)
             emit_code(code_array, position, &cmd);
         else if (err > 3)
-            printf(PAINT_TEXT(COLOR_RED, "ERROR!!!\n"));
+            ASM_ERROR_MSG("ERROR!!!\n");
     }
     return code_array;
 }

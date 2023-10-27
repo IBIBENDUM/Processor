@@ -1,5 +1,5 @@
-push 1
-in
-add
+push 5
+pop [1]
+push [1]
 out
 HLT

@@ -1,37 +1,36 @@
-DEF_CMD(push,  0b111,
+DEF_CMD(push, 0b111,
     {
-        arg_t arg = get_bin_arg(code_array, &ip, regs);
+        arg_t arg = *get_bin_arg(code_array, &ip, regs);
         SPU_DEBUG_MSG("push %d\n", arg);
         push_stack(&SPU_STACK, arg * FLOAT_COEFFICIENT);
     })
 
-DEF_CMD(pop,  0b110,
+DEF_CMD(pop, 0b111,
     {
         arg_t value = 0;
         pop_stack(&SPU_STACK, &value);
-
-        arg_t reg_id = get_bin_arg(code_array, &ip, regs);
-        regs[reg_id].value = value;
-        push_stack(&SPU_STACK, value);
+        arg_t* reg_id = get_bin_arg(code_array, &ip, regs);
+        SPU_DEBUG_MSG("reg_id = %d", *reg_id);
+        *reg_id = value / FLOAT_COEFFICIENT;
     })
 
-DEF_CMD(jmp,  0b001,
+DEF_CMD(jmp, 0b001,
     {
-        arg_t pos = get_bin_arg(code_array, &ip, regs);
+        arg_t pos = *get_bin_arg(code_array, &ip, regs);
         SPU_DEBUG_MSG("jmp %d\n", pos);
         ip = pos;
     })
 
-DEF_CMD(call,  0b001,
+DEF_CMD(call, 0b001,
     {
         push_stack(&SPU_STACK, ip);
 
-        arg_t pos = get_bin_arg(code_array, &ip, regs);
+        arg_t pos = *get_bin_arg(code_array, &ip, regs);
         SPU_DEBUG_MSG("call %d\n", pos);
         ip = pos;
     })
 
-DEF_CMD(ret,  0b000,
+DEF_CMD(ret, 0b000,
     {
         push_stack(&SPU_STACK, ip);
 
@@ -56,7 +55,7 @@ DEF_CMD(ret,  0b000,
             \
             SPU_DEBUG_MSG("value_1 = %d value_2 = %d\n", value_2, value_1);\
             \
-            arg_t pos = get_bin_arg(code_array, &ip, regs);\
+            arg_t pos = *get_bin_arg(code_array, &ip, regs);\
             if (value_1 SIGN value_2)\
             {\
                 SPU_DEBUG_MSG("%s %d\n", #NAME, pos);\
@@ -71,11 +70,12 @@ MAKE_COND_JMP(jbe, <=)
 MAKE_COND_JMP(je, ==)
 #undef MAKE_COND_JMP
 
-DEF_CMD( HLT,  0b000,
+DEF_CMD(HLT, 0b000,
     {
         ip = -1;
     })
-DEF_CMD(  in,  0b000,
+
+DEF_CMD(in, 0b000,
     {
         arg_t value = 0;
         printf("Please enter value: ");
@@ -87,7 +87,7 @@ DEF_CMD(  in,  0b000,
         push_stack(&SPU_STACK, value * FLOAT_COEFFICIENT);
     })
 
-DEF_CMD( out,  0b000,
+DEF_CMD(out, 0b000,
     {
         arg_t value = 0;
         pop_stack(&SPU_STACK, &value);
@@ -97,7 +97,7 @@ DEF_CMD( out,  0b000,
     })
 
 #define MAKE_OPERATION_CMD(NAME, OPERATION, COEFF)\
-DEF_CMD(NAME,  0b000,\
+DEF_CMD(NAME, 0b000,\
     {\
         arg_t value_1 = 0;\
         pop_stack(&SPU_STACK, &value_1);\
