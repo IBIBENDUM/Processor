@@ -1,7 +1,5 @@
 push 1
-push 1
+in
 add
 out
-push 5
-ja 8
 HLT

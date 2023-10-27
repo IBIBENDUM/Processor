@@ -1,12 +1,10 @@
 #ifndef STACK_LOGS_H
 #define STACK_LOGS_H
 
-#ifdef DEBUG
-    #define DEBUG_MSG(FORMAT, ...)\
-        do {\
-            printf(FORMAT, ##__VA_ARGS__); /* BAH: "##" because of empty __VA_ARGS__*/ \
-        } while (0)
+#include "logs.h"
 
+#ifdef STK_DEBUG
+    #define STK_DEBUG_MSG(...) DEBUG_MSG(COLOR_YELLOW, __VA_ARGS__)
     #define dump_stack(FILE_PTR, STK, ERROR)\
         do {\
             struct dump_info INFO = { .file_name = __FILE__, \
@@ -16,7 +14,7 @@
             dump_stack(FILE_PTR, STK, ERROR, &INFO);\
         } while(0)
 #else
-    #define DEBUG_MSG(FORMAT, ...)
+    #define STK_DEBUG_MSG(...)
     #define dump_stack(FILE_PTR, STK, ERROR)
 #endif
 

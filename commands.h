@@ -19,7 +19,7 @@ DEF_CMD(jmp,  0b001,
     {
         arg_t pos = get_bin_arg(code_array, &ip, regs);
         SPU_DEBUG_MSG("jmp %d\n", pos);
-        ip = pos - 1;
+        ip = pos;
     })
 
 DEF_CMD(call,  0b001,
@@ -28,7 +28,7 @@ DEF_CMD(call,  0b001,
 
         arg_t pos = get_bin_arg(code_array, &ip, regs);
         SPU_DEBUG_MSG("call %d\n", pos);
-        ip = pos - 1;
+        ip = pos;
     })
 
 DEF_CMD(ret,  0b000,
@@ -40,7 +40,7 @@ DEF_CMD(ret,  0b000,
 
         SPU_DEBUG_MSG("ret %d\n", ret_pos);
 
-        ip = ret_pos - 1;
+        ip = ret_pos;
     })
 
 #define MAKE_COND_JMP(NAME, SIGN)\
@@ -71,8 +71,22 @@ MAKE_COND_JMP(jbe, <=)
 MAKE_COND_JMP(je, ==)
 #undef MAKE_COND_JMP
 
-DEF_CMD( HLT,  0b000)
-DEF_CMD(  in,  0b000)
+DEF_CMD( HLT,  0b000,
+    {
+        ip = -1;
+    })
+DEF_CMD(  in,  0b000,
+    {
+        arg_t value = 0;
+        printf("Please enter value: ");
+        if (!fscanf(stdin, "%d", &value))
+        {
+            SPU_ERROR_MSG("WRONG INPUT!");
+            ip = -1;
+        }
+        push_stack(&SPU_STACK, value * FLOAT_COEFFICIENT);
+    })
+
 DEF_CMD( out,  0b000,
     {
         arg_t value = 0;

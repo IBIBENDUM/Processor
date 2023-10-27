@@ -6,7 +6,7 @@
 #include "logs.h"
 
 #ifdef TL_DEBUG
-    #define TL_DEBUG_MSG(...) DEBUG_MSG(__VA_ARGS__)
+    #define TL_DEBUG_MSG(...) DEBUG_MSG(COLOR_YELLOW, __VA_ARGS__)
 #else
     #define TL_DEBUG_MSG(...)
 #endif
