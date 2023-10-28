@@ -7,8 +7,9 @@
 typedef int arg_t;
 typedef int cmd_t;
 
-const int MAX_ARGS_AMOUNT = 3;
+const size_t RAM_SIZE = 100;
 
+const int MAX_ARGS_AMOUNT = 3;
 const int ARGS_MASK_OFFSET = 5;
 
 enum Op_code_masks
@@ -19,17 +20,24 @@ enum Op_code_masks
     ID_MASK        = 0b00011111
 };
 
-
-enum Args_combinations =
+enum Args_combinations
 {
-    ___ = 0x0                                        >> CHAR_BIT * 0,
-    __I = ARG_IMM_MASK                               >> CHAR_BIT * 1,
-    _R_ = ARG_RAM_MASK                               >> CHAR_BIT * 2,
-    M_I = ARG_RAM_MASK | ARG_IMM_MASK                >> CHAR_BIT * 3,
-    MR_ = ARG_RAM_MASK | ARG_RAM_MASK                >> CHAR_BIT * 4,
-    MRI = ARG_RAM_MASK | ARG_RAM_MASK | ARG_IMM_MASK >> CHAR_BIT * 5
-}
+    ___ = 1 << 0,
+    __I = 1 << 1,
+    _R_ = 1 << 2,
+    _RI = 1 << 3,
+    M_I = 1 << 4,
+    MR_ = 1 << 5,
+    MRI = 1 << 6,
+    ARGS_COMBINATIONS_AMOUNT
+};
 
+const uint8_t args_combinations_arr[] =
+{
+    0b000, 0b001, 0b010,
+    0b011, 0b101, 0b110,
+    0b111
+};
 
 enum Cmds_ids
 {

@@ -38,6 +38,7 @@ struct Command
     int cmd_id;
     int reg_id;
     int imm;
+    uint8_t args_bitmask;
 
     bool has_ram;
     bool is_ram_opened;
@@ -60,23 +61,44 @@ struct Labels
     size_t amount = 0;
 };
 
-static void emit_code(int* code_array, size_t* position, Command* cmd)
+static cmd_error emit_code(int* code_array, size_t* position, Command* cmd)
 {
     assert(code_array);
     assert(position);
 
-    // BAH: Make uneven code
-    // ASM_DEBUG_MSG("cmd_id = <%d>", cmd->cmd_id);
-    // ASM_DEBUG_MSG("has_imm = <%d>", cmd->has_imm);
-    int cmd_code = cmd->cmd_id | (ARG_IMM_MASK * cmd->has_imm) | (ARG_REG_MASK * cmd->has_reg);
-    code_array[(*position)++] = cmd_code;
-    // ASM_DEBUG_MSG("cmd_code = <%d>", cmd_code);
+    int cmd_code = cmd->cmd_id | (ARG_IMM_MASK * cmd->has_imm) | (ARG_REG_MASK * cmd->has_reg) | (ARG_RAM_MASK * cmd->has_ram);
+
+    bool is_correct_args = false;
+    ASM_DEBUG_MSG("cmd->args_bitmask = %d", cmd->args_bitmask);
+    for (size_t i = 0; i < ARGS_COMBINATIONS_AMOUNT; i++)
+    {
+        if (cmd->args_bitmask & (1 << i))
+        {
+            if ((cmd_code >> ARGS_MASK_OFFSET) == args_combinations_arr[i])
+            {
+                is_correct_args = true;
+                break;
+            }
+        }
+    }
+    if (!is_correct_args)
+        return CMD_WRONG_ARG_ERR;
+
+    *(cmd_t*)((uint8_t*) code_array + *position) = cmd_code;
+    *position += sizeof(cmd_t);
 
     if (cmd->has_reg)
-        code_array[(*position)++] = cmd->reg_id;
-
+    {
+        *(arg_t*)((uint8_t*) code_array + *position) = cmd->reg_id;
+        *position += sizeof(arg_t);
+    }
     if (cmd->has_imm)
-        code_array[(*position)++] = cmd->imm;
+    {
+        ASM_DEBUG_MSG("cmd->imm = %d", cmd->imm);
+        *(arg_t*)((uint8_t*) code_array + *position) = cmd->imm;
+        *position += sizeof(arg_t);
+    }
+    return CMD_NO_ERR;
 }
 
 static void remove_comment(line* line_ptr)
@@ -86,7 +108,15 @@ static void remove_comment(line* line_ptr)
         *comment_sym = L'\0';
 }
 
-static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, const int args_bitmask, Labels* labels)
+// #define CHAR_TO_ZERO_AND_BACK(POINTER, ...)\
+//     do {
+//         const wchar_t TAKEN_CHAR = *POINTER;\
+//         *POINTER = L'\0';\
+//         __VA_ARGS__;\
+//         *POINTER = TAKEN_CHAR;\
+//     } while (0)
+
+static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
 {
     size_t arg_len = 0;
     wchar_t* arg_ptr = get_word(arg_start_ptr, &arg_len);
@@ -97,20 +127,21 @@ static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, const int args_bi
         return CMD_WRONG_ARG_ERR;
     }
 
+    // CHAR_TO_ZERO_AND_BACK();
     const wchar_t delim_char = arg_ptr[arg_len];
     arg_ptr[arg_len] = L'\0';
 
     bool arg_read = false;
     wchar_t reg_id[2] = {};
     int imm = 0;
-    if ((args_bitmask & (ARG_REG_MASK >> ARGS_MASK_OFFSET)) && (arg_len == 3) && (swscanf(arg_ptr, L"r%1[a-d]x", &reg_id)))
+    if ((arg_len == 3) && (swscanf(arg_ptr, L"r%1[a-d]x", &reg_id)))
     {
         ASM_DEBUG_MSG("Reg\n");
         cmd->reg_id = reg_id[0] - L'a' + 1;
         cmd->has_reg = true;
         arg_read = true;
     }
-    else if ((args_bitmask & (ARG_IMM_MASK >> ARGS_MASK_OFFSET)) && swscanf(arg_ptr, L"%d", &imm))
+    else if (swscanf(arg_ptr, L"%d", &imm))
     {
         ASM_DEBUG_MSG("Imm\n");
         cmd->has_imm = true;
@@ -137,24 +168,24 @@ static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, const int args_bi
     return CMD_NO_ERR;
 }
 
+// static cmd_error parse_possible_parse_combinations()
+
 static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cmd, Labels* labels)
 {
     assert(cmd);
 
-    if (!args_bitmask)
+    if (args_bitmask == 1)
         return CMD_NO_ERR;
 
     ASM_DEBUG_MSG("%ls", op_ptr);
     size_t left_br_pos = 0;
     size_t right_br_pos = 0;
-    if (args_bitmask & (ARG_RAM_MASK >> ARGS_MASK_OFFSET))
+
+    swscanf(op_ptr, L" [%n%*[^]]%n ", &left_br_pos, &right_br_pos);
+    if (right_br_pos)
     {
-        swscanf(op_ptr, L" [%n%*[^]]%n ", &left_br_pos, &right_br_pos);
-        if (right_br_pos)
-        {
-            ASM_DEBUG_MSG("cmd->has_ram = true");
-            cmd->has_ram = true;
-        }
+        ASM_DEBUG_MSG("cmd->has_ram = true");
+        cmd->has_ram = true;
     }
 
     if (cmd->has_ram)
@@ -165,7 +196,7 @@ static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cm
     }
 
     cmd_error err = CMD_NO_ERR;
-    err = get_arg(op_ptr + left_br_pos, cmd, args_bitmask, labels);
+    err = get_arg(op_ptr + left_br_pos, cmd, labels);
     if (err != CMD_NO_ERR)
         return err;
 
@@ -174,13 +205,14 @@ static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cm
         operator_pos = 0;
 
     ASM_DEBUG_MSG("%ls", op_ptr + left_br_pos);
-    ASM_DEBUG_MSG("operator_pos = %d", operator_pos);
+    ASM_DEBUG_MSG("operator_pos = %lld", operator_pos);
 
     if (operator_pos)
     {
-        err = get_arg(op_ptr + left_br_pos + operator_pos + 1, cmd, args_bitmask, labels);
+        err = get_arg(op_ptr + left_br_pos + operator_pos + 1, cmd, labels);
     }
 
+    // BAH: Check for trash
     if (cmd->has_ram)
     {
         op_ptr[left_br_pos - 1] = L'[';
@@ -200,7 +232,7 @@ static cmd_error emit_label(wchar_t* label_name_ptr, const size_t op_name_len, c
     {
         if (wcsncmp(labels->labels_arr[id].name, label_name_ptr, op_name_len - 1) == 0)
         {
-            labels->labels_arr[id].op_id = (int) position + 1;
+            labels->labels_arr[id].op_id = (int) position;
             return CMD_NO_ERR;
         }
     }
@@ -225,6 +257,7 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
             {\
                 const int id = OPERATIONS[NAME ## _enum].id;\
                 cmd->cmd_id = id;\
+                cmd->args_bitmask = ARGS_BITMASK;\
                 cmd_error parse_args_ret_val = parse_args(ARGS_BITMASK, op_name + op_name_len, cmd, labels);\
                 ASM_DEBUG_MSG("parse_args = %d\n", parse_args_ret_val);\
                 ASM_DEBUG_MSG("code: ram %d id %d reg %d imm %d\n", cmd->has_ram, cmd->cmd_id, cmd->reg_id, cmd->imm);\
@@ -276,29 +309,17 @@ static cmd_error set_labels_names(File* file, Labels* labels)
     return CMD_NO_ERR;
 }
 
-static int* parse_file_to_commands(File* file, size_t* position)
+static int* parse_file_to_commands(File* file, size_t* position, int* code_array, Labels* labels)
 {
     assert(file);
     assert(position);
-
-    tokenize_lines(file);
-    const size_t line_amount = file->line_amounts;
-
-    const size_t max_arg_len = (sizeof(cmd_t) > sizeof(arg_t)) ? sizeof(cmd_t) : sizeof(arg_t);
-    int* code_array = (int*) calloc(line_amount * MAX_ARGS_AMOUNT, max_arg_len);
-    ASM_DEBUG_MSG("line_amount = %lld", line_amount);
-
-    Labels labels = {};
-
-    set_labels_names(file, &labels); // BAH: Make by two compiles
-
-    for (size_t i = 0; i < line_amount; i++)
+    for (size_t i = 0; i < file->line_amounts; i++)
     {
         line* line_ptr = file->lines_ptrs + i;
         Command cmd = {};
         cmd_error err = CMD_NO_ERR;
 
-        err = parse_line_to_command(&cmd, line_ptr, *position, &labels);
+        err = parse_line_to_command(&cmd, line_ptr, *position, labels);
         if (err == CMD_NO_ERR)
             emit_code(code_array, position, &cmd);
         else if (err > 3)
@@ -307,7 +328,7 @@ static int* parse_file_to_commands(File* file, size_t* position)
     return code_array;
 }
 
-static asm_error write_to_file(const char* output_file_name, int* code_array, const size_t size)
+asm_error write_bytecode_to_file(const char* output_file_name, int* code_array, const size_t size)
 {
     assert(output_file_name);
     assert(code_array);
@@ -317,7 +338,7 @@ static asm_error write_to_file(const char* output_file_name, int* code_array, co
     if (!file_ptr)
         return FILE_OPEN_ERR;
 
-    fwrite(code_array, sizeof(int), size, file_ptr);
+    fwrite(code_array, sizeof(uint8_t), size, file_ptr);
 
     int ret_val = fclose(file_ptr);
     file_ptr = NULL;
@@ -333,9 +354,22 @@ asm_error text_to_asm(File* input_file, const char* output_file_name)
     assert(input_file);
     assert(output_file_name);
 
+    tokenize_lines(input_file);
+    const size_t line_amount = input_file->line_amounts;
+
+    const size_t max_arg_len = (sizeof(cmd_t) > sizeof(arg_t)) ? sizeof(cmd_t) : sizeof(arg_t);
+    int* code_array = (int*) calloc(line_amount * MAX_ARGS_AMOUNT, max_arg_len);
+
+    Labels labels = {};
+
+    set_labels_names(input_file, &labels);
+
     size_t size = 0;
-    int* code_array = parse_file_to_commands(input_file, &size);
-    write_to_file(output_file_name, code_array, size);
+    parse_file_to_commands(input_file, &size, code_array, &labels);
+    size = 0;
+    parse_file_to_commands(input_file, &size, code_array, &labels);
+
+    write_bytecode_to_file(output_file_name, code_array, size);
 
     return NO_ERR;
 }

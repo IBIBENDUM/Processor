@@ -15,8 +15,9 @@ int main()
     init_file(INPUT_FILE_NAME, &input_file);
 
     asm_error err_code = NO_ERR;
-    err_code = text_to_asm(&input_file, OUTPUT_FILE_NAME);
-    printf("err_code = %d", err_code);
+    text_to_asm(&input_file, OUTPUT_FILE_NAME);
+
+    // printf("err_code = %d", err_code);
 
     destruct_file(&input_file);
 

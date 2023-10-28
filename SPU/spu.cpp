@@ -1,4 +1,5 @@
 #include <inttypes.h>
+#include <stdlib.h>
 
 #include "spu.h"
 #include "../common.h"
@@ -41,47 +42,47 @@ struct Register
 
 // BAH: Remove global variable
 static stack SPU_STACK = {};
-static stack RAM_STACK = {};
 
 void construct_spu()
 {
     init_stack(SPU_STACK);
-    init_stack(RAM_STACK);
 }
 
 void destruct_spu()
 {
     destruct_stack(&SPU_STACK);
-    destruct_stack(&RAM_STACK);
 }
 
-
-
-arg_t* get_bin_arg(const cmd_t* code, ssize_t* ip, Register* regs)
+arg_t* get_bin_arg(const cmd_t* code, ssize_t* ip, Register* regs, arg_t* RAM)
 {
     cmd_t cmd = *(arg_t*)((uint8_t*) code + *ip - sizeof(cmd_t));
     arg_t* res = 0;
+    SPU_DEBUG_MSG("cmd %d", cmd);
 
     if (cmd & ARG_IMM_MASK)
     {
         res = (arg_t*)((uint8_t*) code + *ip);
         *ip += sizeof(arg_t);
+        SPU_DEBUG_MSG("res_imm = %d", *res);
     }
     if (cmd & ARG_REG_MASK)
     {
         res = (arg_t*) &(regs[*(arg_t*)((uint8_t*) code + *ip)].value);
         *ip += sizeof(arg_t);
+        SPU_DEBUG_MSG("res_reg = %d", *res);
     }
     if (cmd & ARG_RAM_MASK)
     {
-        res = (arg_t*) &RAM_STACK.data[*res];
-        *ip += sizeof(arg_t);
+        res = (arg_t*) &RAM[*res];
+        SPU_DEBUG_MSG("RAM");
     }
     return res;
 }
 
 void execute_program(cmd_t* code_array)
 {
+    arg_t* RAM = (arg_t*) calloc(RAM_SIZE, sizeof(arg_t));
+
     Register regs[REGS_AMOUNT]
     {
         #define DEF_REG(NAME) {L ## #NAME, NAME, 0},

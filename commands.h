@@ -1,36 +1,36 @@
-DEF_CMD(push, 0b111,
+DEF_CMD(push, __I | _R_ | M_I | MR_ | MRI,
     {
-        arg_t arg = *get_bin_arg(code_array, &ip, regs);
+        arg_t arg = *get_bin_arg(code_array, &ip, regs, RAM);
         SPU_DEBUG_MSG("push %d\n", arg);
         push_stack(&SPU_STACK, arg * FLOAT_COEFFICIENT);
     })
 
-DEF_CMD(pop, 0b111,
+DEF_CMD(pop, ___ | _R_ | M_I | MR_ | MRI,
     {
         arg_t value = 0;
         pop_stack(&SPU_STACK, &value);
-        arg_t* reg_id = get_bin_arg(code_array, &ip, regs);
-        SPU_DEBUG_MSG("reg_id = %d", *reg_id);
+        arg_t* reg_id = get_bin_arg(code_array, &ip, regs, RAM);
         *reg_id = value / FLOAT_COEFFICIENT;
+        SPU_DEBUG_MSG("reg_id = %d", *reg_id);
     })
 
-DEF_CMD(jmp, 0b001,
+DEF_CMD(jmp, __I | _R_ | M_I | MR_ | MRI,
     {
-        arg_t pos = *get_bin_arg(code_array, &ip, regs);
+        arg_t pos = *get_bin_arg(code_array, &ip, regs, RAM);
         SPU_DEBUG_MSG("jmp %d\n", pos);
         ip = pos;
     })
 
-DEF_CMD(call, 0b001,
+DEF_CMD(call, __I | _R_ | M_I | MR_ | MRI,
     {
         push_stack(&SPU_STACK, ip);
 
-        arg_t pos = *get_bin_arg(code_array, &ip, regs);
+        arg_t pos = *get_bin_arg(code_array, &ip, regs, RAM);
         SPU_DEBUG_MSG("call %d\n", pos);
         ip = pos;
     })
 
-DEF_CMD(ret, 0b000,
+DEF_CMD(ret, ___,
     {
         push_stack(&SPU_STACK, ip);
 
@@ -43,7 +43,7 @@ DEF_CMD(ret, 0b000,
     })
 
 #define MAKE_COND_JMP(NAME, SIGN)\
-    DEF_CMD(NAME, 0b001,\
+    DEF_CMD(NAME, __I | _R_ | M_I | MR_ | MRI,\
         {\
             arg_t value_1 = 0;\
             pop_stack(&SPU_STACK, &value_1);\
@@ -55,7 +55,7 @@ DEF_CMD(ret, 0b000,
             \
             SPU_DEBUG_MSG("value_1 = %d value_2 = %d\n", value_2, value_1);\
             \
-            arg_t pos = *get_bin_arg(code_array, &ip, regs);\
+            arg_t pos = *get_bin_arg(code_array, &ip, regs, RAM);\
             if (value_1 SIGN value_2)\
             {\
                 SPU_DEBUG_MSG("%s %d\n", #NAME, pos);\
@@ -70,12 +70,12 @@ MAKE_COND_JMP(jbe, <=)
 MAKE_COND_JMP(je, ==)
 #undef MAKE_COND_JMP
 
-DEF_CMD(HLT, 0b000,
+DEF_CMD(HLT, ___,
     {
         ip = -1;
     })
 
-DEF_CMD(in, 0b000,
+DEF_CMD(in, ___,
     {
         arg_t value = 0;
         printf("Please enter value: ");
@@ -87,7 +87,7 @@ DEF_CMD(in, 0b000,
         push_stack(&SPU_STACK, value * FLOAT_COEFFICIENT);
     })
 
-DEF_CMD(out, 0b000,
+DEF_CMD(out, ___,
     {
         arg_t value = 0;
         pop_stack(&SPU_STACK, &value);
@@ -97,7 +97,7 @@ DEF_CMD(out, 0b000,
     })
 
 #define MAKE_OPERATION_CMD(NAME, OPERATION, COEFF)\
-DEF_CMD(NAME, 0b000,\
+DEF_CMD(NAME, ___,\
     {\
         arg_t value_1 = 0;\
         pop_stack(&SPU_STACK, &value_1);\
