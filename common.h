@@ -7,7 +7,12 @@
 typedef int arg_t;
 typedef int cmd_t;
 
-const size_t RAM_SIZE = 100;
+const int FLOAT_COEFFICIENT = 100;
+const size_t VRAM_HEIGHT = 40;
+const size_t VRAM_WIDTH = 80;
+const size_t VRAM_OFFSET = 20;
+
+const size_t RAM_SIZE = VRAM_HEIGHT * VRAM_WIDTH + VRAM_OFFSET;
 
 const int MAX_ARGS_AMOUNT = 3;
 const int ARGS_MASK_OFFSET = 5;

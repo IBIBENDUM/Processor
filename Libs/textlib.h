@@ -55,6 +55,8 @@ size_t get_char_amount(const wchar_t* const string, const wchar_t ch);
 
 size_t get_lines_amount(const wchar_t* const string);
 
+void replace_with_zero(line* line_ptr, const wchar_t symbol);
+
 void tokenize_lines(File* file);
 
 void init_file(const char* file_name, File* file);
@@ -84,7 +86,7 @@ int compare_lines_backward(const void* line_1_ptr, const void* line_2_ptr);
 
 void empty_lines(line* line_ptr);
 
-size_t get_word_len(wchar_t* string, const wchar_t* delim, wchar_t* symbol);
+size_t get_word_len(wchar_t* string, const wchar_t* delim);
 
 wchar_t* get_word(wchar_t* string, size_t* word_len);
 

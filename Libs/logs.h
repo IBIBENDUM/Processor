@@ -12,4 +12,23 @@
     } while(0)
 #endif
 
+enum log_level
+{
+    LOG_LVL_TRACE,
+    LOG_LVL_DEBUG,
+    LOG_LVL_INFO,
+    LOG_LVL_WARN,
+    LOG_LVL_ERROR,
+};
+
+#define LOG_TRACE(...) init_log(LOG_LVL_TRACE, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define LOG_DEBUG(...) init_log(LOG_LVL_DEBUG, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define LOG_INFO(...)  init_log(LOG_LVL_INFO,  __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define LOG_WARN(...)  init_log(LOG_LVL_WARN,  __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#define LOG_ERROR(...) init_log(LOG_LVL_ERROR, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+
+void set_log_level(enum log_level level);
+
+void init_log(const enum log_level log_level, const char* file, const char* func, const int line, const char* format, ...);
+
 #endif

@@ -68,6 +68,15 @@ wchar_t* read_file(const char* file_name)
     return buffer;
 }
 
+void replace_with_zero(line* line_ptr, const wchar_t symbol)
+{
+    assert(line_ptr);
+
+    wchar_t* symbol_ptr = wcschr(line_ptr->start, symbol);
+    if (symbol_ptr)
+        *symbol_ptr = L'\0';
+}
+
 int* read_bin_file(const char* file_name)
 {
     FILE* file_ptr = fopen(file_name, "rb");

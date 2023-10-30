@@ -3,13 +3,25 @@
 
 #include "../Libs/textlib.h"
 
+#define ASM_ERRORS_LIST\
+    DEF_ASM_ERR(ASM_NO_ERR)\
+    DEF_ASM_ERR(ASM_FILE_OPEN_ERR)\
+    DEF_ASM_ERR(ASM_FILE_CLOSE_ERR)\
+    DEF_ASM_ERR(ASM_MEM_ALLOC_ERR)\
+    DEF_ASM_ERR(ASM_PARSE_ARGS_ERR)\
+    DEF_ASM_ERR(ASM_PARSE_LABELS_ERR)\
+    DEF_ASM_ERR(ASM_WRITE_ERR)\
+
+#define DEF_ASM_ERR(NAME) NAME,
 enum asm_error
 {
-    NO_ERR,
-    FILE_OPEN_ERR,
-    FILE_CLOSE_ERR,
-    TOO_MANY_ARGS_ERR
+    ASM_ERRORS_LIST
 };
+#undef DEF_ASM_ERR
+
+#define DEF_ASM_ERR(NAME) #NAME,
+const char * const asm_errors_strs[] = { ASM_ERRORS_LIST };
+#undef DEF_ASM_ERR
 
 asm_error text_to_asm(File* input_file, const char* output_file_name);
 
