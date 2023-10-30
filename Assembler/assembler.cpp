@@ -472,6 +472,7 @@ asm_error text_to_asm(File* input_file, const char* output_file_name)
 
     Labels labels = {};
 
+    // TODO: Remove this
     cmd_error err = set_labels_names(input_file, &labels);
     if (err != CMD_NO_ERR)
         return ASM_PARSE_LABELS_ERR;

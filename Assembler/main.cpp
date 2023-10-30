@@ -7,16 +7,20 @@
 #include "../Libs/textlib.h"
 #include "../Libs/logs.h"
 #include "assembler.h"
+#include "../Libs/console_args.h"
 
 const char* file_in_name = "input.s";
 const char* file_out_name = "../output.asm";
 
-static bool handle_cmd_args(const int argc, char* const* argv);
-static void print_help();
-
 int main(const int argc, char* const* argv)
 {
-    if (handle_cmd_args(argc, argv))
+    Args_values values =
+    {
+        .input_file = file_in_name,
+        .output_file = file_out_name
+    };
+
+    if (!handle_cmd_args(argc, argv, "i:o:h", &values))
         return 1;
 
     setlocale(LC_ALL, "");
@@ -24,11 +28,11 @@ int main(const int argc, char* const* argv)
     set_log_level(LOG_LVL_INFO);
 
     File input_file = {};
-    init_file(file_in_name, &input_file);
+    init_file(values.input_file, &input_file);
 
     asm_error err = ASM_NO_ERR;
 
-    err = text_to_asm(&input_file, file_out_name);
+    err = text_to_asm(&input_file, values.output_file);
 
     if (err != ASM_NO_ERR)
         LOG_ERROR("err = %s", asm_errors_strs[err]);
@@ -39,52 +43,3 @@ int main(const int argc, char* const* argv)
 
     return 0;
 }
-
-
-// MAKE IN OTHER FILE
-static bool handle_cmd_args(const int argc, char* const* argv)
-{
-    assert(argv);
-    assert(argc);
-
-    int arg = 0;
-
-    while ((arg = getopt(argc, argv, "i:o:h")) != -1)
-    {
-        switch (arg)
-        {
-            case 'i': {
-                file_in_name = optarg;
-                break;
-            }
-
-            case 'o': {
-                file_out_name = optarg;
-                break;
-            }
-
-            case 'h': {
-                print_help();
-                return 1;
-            }
-
-            default: {
-                printf("Wrong option found\n");
-                print_help();
-
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-static void print_help()
-{
-    printf("OPTIONS:\n");
-    printf("-h             Display help message\n");
-    printf("-i             Choose input file name\n");
-    printf("-o             Choose output file name\n");
-}
-

@@ -38,7 +38,6 @@ solve_qe:
     push 0
     jb negative_discr
 
-    pop rdx
     call two_roots
     ret
 
@@ -78,6 +77,7 @@ solve_incomplete_qe:
 
     push 0
     out
+    pop [0]
 
     push -1
     push rbx
@@ -85,16 +85,12 @@ solve_incomplete_qe:
     push rax
     div
     out
+    pop [0]
 
     ret
 
 two_roots:
-    push rdx
-    sqrt
-    pop rdx
-
     call d_sqrt_half
-    push rdx
 
     call calculate_root_const_part
 
@@ -102,11 +98,13 @@ two_roots:
     push rdx
     add
     out
+    pop [0]
 
     push rax
     push rdx
     sub
     out
+    pop [0]
 
     ret
 
@@ -125,11 +123,14 @@ calculate_root_const_part:
 
 d_sqrt_half:
     push rdx
+    sqrt
     push 2
     push rax
     mul
     div
+    out
     pop rdx
+
     ret
 
 
@@ -142,12 +143,14 @@ one_root:
     push rax
     div
     out
+    pop [0]
 
     ret
 
 complex_roots:
     push 404
     out
+    pop [0]
 
     ret
 
@@ -180,6 +183,8 @@ solve_linear_equation:
         pop rcx
         push 0
         out
+        pop [0]
+
         ret
 
 free_member_equation:

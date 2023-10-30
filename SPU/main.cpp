@@ -4,20 +4,30 @@
 #include <assert.h>
 
 #include "../Libs/textlib.h"
+#include "../Libs/console_args.h"
 #include "spu.h"
-
-static bool handle_cmd_args(const int argc, char* const* argv);
-static void print_help();
 
 const char* code_file_name = "../output.asm";
 
 int main(const int argc, char* const* argv)
 {
-    if (handle_cmd_args(argc, argv))
+    Args_values values =
+    {
+        .input_file = code_file_name
+    };
+
+    if (!handle_cmd_args(argc, argv, "i:h", &values))
         return 1;
 
-    cmd_t* code_array = (cmd_t*) read_bin_file(code_file_name);
+    LOG_INFO("code_file_name = %s", values.input_file);
+    set_log_level(LOG_LVL_TRACE);
 
+    cmd_t* code_array = (cmd_t*) read_file(values.input_file, BIN);
+    if (!code_array)
+    {
+        LOG_ERROR("Error at code array file opening");
+        return 0;
+    }
     Spu spu = {};
 
     construct_spu(&spu);
@@ -27,45 +37,3 @@ int main(const int argc, char* const* argv)
     destruct_spu(&spu);
     FREE_AND_NULL(code_array);
 }
-
-
-static bool handle_cmd_args(const int argc, char* const* argv)
-{
-    assert(argv);
-    assert(argc);
-
-    int arg = 0;
-
-    while ((arg = getopt(argc, argv, "i:h")) != -1)
-    {
-        switch (arg)
-        {
-            case 'i': {
-                code_file_name = optarg;
-                break;
-            }
-
-            case 'h': {
-                print_help();
-                return 1;
-            }
-
-            default: {
-                printf("Wrong option found\n");
-                print_help();
-
-                return 1;
-            }
-        }
-    }
-
-    return 0;
-}
-
-static void print_help()
-{
-    printf("OPTIONS:\n");
-    printf("-h             Display help message\n");
-    printf("-i             Choose input file name\n");
-}
-

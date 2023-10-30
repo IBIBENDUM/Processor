@@ -5,7 +5,7 @@
 DEF_CMD(push, __I | _RI| _R_ | M_I | MR_ | MRI,
     {
         arg_t arg = *GET_ARG;
-        SPU_DEBUG_MSG("push %d\n", arg);
+        LOG_TRACE("push %d", arg);
         PUSH(arg);
     })
 
@@ -15,7 +15,7 @@ DEF_CMD(pop, ___ | _R_ | M_I | MR_ | MRI,
         POP(value);
         arg_t* reg_id = GET_ARG;
         *reg_id = value;
-        SPU_DEBUG_MSG("reg_id = %d", *reg_id);
+        LOG_TRACE("reg_id = %d", *reg_id);
     })
 
 DEF_CMD(sqrt, ___,
@@ -28,29 +28,24 @@ DEF_CMD(sqrt, ___,
 DEF_CMD(jmp, __I | _R_ | M_I | MR_ | MRI,
     {
         arg_t pos = *GET_ARG;
-        SPU_DEBUG_MSG("jmp %d\n", pos);
+        LOG_TRACE("jmp %d", pos);
         ip = pos;
     })
 
 DEF_CMD(call, __I | _R_ | M_I | MR_ | MRI,
     {
         arg_t pos = *GET_ARG;
-        SPU_DEBUG_MSG("call %d\n", pos);
+        LOG_TRACE("call %d", pos);
         PUSH((arg_t) ip);
         ip = pos;
     })
 
 DEF_CMD(ret, ___,
     {
-        // arg_t ret_value = 0;
-        // POP(ret_value);
-        // regs[rax + 1].value = ret_value;
-        // SPU_DEBUG_MSG("ret_value %d\n", ret_value);
-
         arg_t ret_pos = 0;
         POP(ret_pos);
 
-        SPU_DEBUG_MSG("ret %d\n", ret_pos);
+        LOG_TRACE("ret %d", ret_pos);
 
         ip = ret_pos;
     })
@@ -64,12 +59,12 @@ DEF_CMD(ret, ___,
             arg_t value_2 = 0;\
             POP(value_2);\
             \
-            SPU_DEBUG_MSG("value_1 = %d value_2 = %d\n", value_2, value_1);\
+            LOG_TRACE("value_1 = %d value_2 = %d", value_2, value_1);\
             \
             arg_t pos = *GET_ARG;\
             if (value_2 SIGN value_1)\
             {\
-                SPU_DEBUG_MSG("%s %d\n", #NAME, pos);\
+                LOG_TRACE("%s %d", #NAME, pos);\
                 ip = pos;\
             }\
         })
@@ -92,9 +87,14 @@ DEF_CMD(in, ___,
         printf("Please enter value: ");
         if (!fscanf(stdin, "%d", &value))
         {
-            SPU_ERROR_MSG("WRONG INPUT!");
+            printf(PAINT_TEXT(COLOR_LIGHT_RED, "WRONG INPUT!"));
             ip = -1;
         }
+
+        int ch = 0;
+        while (((ch=getchar()) != '\n') && (ch != EOF))
+            continue;
+
         PUSH(value * FLOAT_COEFFICIENT);
     })
 

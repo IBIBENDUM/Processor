@@ -37,10 +37,11 @@ static size_t get_line_len(const wchar_t* string)
     return wcscspn(string, L"\n") + 1;
 }
 
-wchar_t* read_file(const char* file_name)
+wchar_t* read_file(const char* file_name, enum File_read_mode mode)
 {
     FILE* file_ptr = fopen(file_name, "rb");
-    _setmode(_fileno(file_ptr), SET_MODE_CONST);
+    if (mode == TEXT)
+        _setmode(_fileno(file_ptr), SET_MODE_CONST);
 
     HANDLE_ERROR(file_ptr, "Couldn't open file", NULL);
     TL_DEBUG_MSG("File opened\n");
@@ -75,36 +76,6 @@ void replace_with_zero(line* line_ptr, const wchar_t symbol)
     wchar_t* symbol_ptr = wcschr(line_ptr->start, symbol);
     if (symbol_ptr)
         *symbol_ptr = L'\0';
-}
-
-int* read_bin_file(const char* file_name)
-{
-    FILE* file_ptr = fopen(file_name, "rb");
-
-    HANDLE_ERROR(file_ptr, "Couldn't open file", NULL);
-    TL_DEBUG_MSG("File opened\n");
-
-    const ssize_t descriptor = fileno(file_ptr);
-    HANDLE_ERROR(descriptor != -1, "Couldn't get file descriptor", NULL);
-
-    const ssize_t size = get_file_size(descriptor);
-    HANDLE_ERROR(size != -1, "Couldn't get file size", NULL);
-    TL_DEBUG_MSG("Got size\n");
-
-    int* buffer = (int*) calloc(size + 1, sizeof(int));
-    HANDLE_ERROR(buffer, "Error at memory allocation", NULL);
-    TL_DEBUG_MSG("Buffer allocated\n");
-
-    const size_t fread_ret_val = fread(buffer, sizeof(int), size, file_ptr);
-    HANDLE_ERROR(fread_ret_val, "Error at file reading", NULL);
-    TL_DEBUG_MSG("File read\n");
-
-    const size_t fclose_ret_val = fclose(file_ptr);
-    file_ptr = NULL;
-    HANDLE_ERROR(!fclose_ret_val, "Error at closing file", NULL);
-    TL_DEBUG_MSG("File closed\n");
-
-    return buffer;
 }
 
 static void initialize_line(line* line_ptr, wchar_t* string, const size_t len)
@@ -158,7 +129,7 @@ void init_file(const char* file_name, File* file)
     assert(file_name);
     assert(file);
 
-    wchar_t* buffer = read_file(file_name);
+    wchar_t* buffer = read_file(file_name, TEXT);
     HANDLE_ERROR(buffer, "Error at buffering file");
 
     size_t lines_amount = get_lines_amount(buffer);

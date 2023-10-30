@@ -29,7 +29,13 @@ do{\
 
 const int SET_MODE_CONST = 0x00040000;
 
-enum COMPARE_TYPE
+enum File_read_mode
+{
+    BIN,
+    TEXT
+};
+
+enum Compare_type
 {
     COMPARE_FORWARD = 1,
     COMPARE_BACKWARD = -1
@@ -64,8 +70,7 @@ void init_file(const char* file_name, File* file);
 void destruct_file(File* file_struct);
 
 // needs free()
-wchar_t* read_file(const char* file_name);
-int* read_bin_file(const char* file_name);
+wchar_t* read_file(const char* file_name, enum File_read_mode mode);
 
 // need free()
 line* parse_lines_to_arr(wchar_t* string, const size_t lines_amount);

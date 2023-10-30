@@ -11,15 +11,6 @@
 #include "../Libs/stack_logs.h"
 #include "../Libs/logs.h"
 
-// #define SPU_DEBUG
-#ifdef SPU_DEBUG
-    #define SPU_DEBUG_MSG(...) DEBUG_MSG(COLOR_YELLOW, __VA_ARGS__)
-    #define SPU_ERROR_MSG(...) DEBUG_MSG(COLOR_RED, __VA_ARGS__)
-#else
-    #define SPU_DEBUG_MSG(...)
-    #define SPU_ERROR_MSG(...)
-#endif
-
 void construct_spu(struct Spu* spu)
 {
     LOG_INFO("Initializing SPU...");
@@ -46,26 +37,26 @@ static arg_t* get_bin_arg(cmd_t* code, ssize_t* ip, struct Spu* spu)
 
     cmd_t cmd = *(arg_t*)((uint8_t*) code + *ip - sizeof(cmd_t));
     arg_t* res = 0;
-    SPU_DEBUG_MSG("cmd %d", cmd);
+    LOG_TRACE("cmd %d", cmd);
 
     if (cmd & ARG_IMM_MASK)
     {
         res = (arg_t*)((uint8_t*) code + *ip);
         *ip += sizeof(arg_t);
-        SPU_DEBUG_MSG("res_imm = %d", *res);
+        LOG_TRACE("res_imm = %d", *res);
     }
     if (cmd & ARG_REG_MASK)
     {
-        SPU_DEBUG_MSG("reg_id = %d", *(arg_t*)((uint8_t*) code + *ip));
+        LOG_TRACE("reg_id = %d", *(arg_t*)((uint8_t*) code + *ip));
         res = (arg_t*) &(spu->regs[*(arg_t*)((uint8_t*) code + *ip)].value);
 
         *ip += sizeof(arg_t);
-        SPU_DEBUG_MSG("res_reg = %d", *res);
+        LOG_TRACE("res_reg = %d", *res);
     }
     if (cmd & ARG_RAM_MASK)
     {
         res = (arg_t*) &spu->ram[*res / FLOAT_COEFFICIENT];
-        SPU_DEBUG_MSG("RAM");
+        LOG_TRACE("RAM");
     }
     return res;
 }
@@ -73,32 +64,34 @@ static arg_t* get_bin_arg(cmd_t* code, ssize_t* ip, struct Spu* spu)
 void print_ram(Spu* spu)
 {
     LOG_INFO("Printing RAM...");
+    size_t position = 0;
     for (size_t y = 0; y < VRAM_HEIGHT; y++)
     {
         for (size_t x = 0; x < VRAM_WIDTH; x++)
         {
-            switch (spu->ram[(VRAM_WIDTH) * y + x + VRAM_OFFSET])
+            size_t position = (VRAM_WIDTH + 1) * y + x;
+            switch (spu->ram[position - y + VRAM_OFFSET])
             {
                 case 0:
                 {
-                    spu->vram[(VRAM_WIDTH + 1) * y + x] = '.';
+                    spu->vram[position] = '.';
                     break;
                 }
                 case 100:
                 {
-                    spu->vram[(VRAM_WIDTH + 1) * y + x] = '0';
+                    spu->vram[position] = '0';
                     break;
                 }
                 default:
                 {
-                    spu->vram[(VRAM_WIDTH + 1) * y + x] = '?';
+                    spu->vram[position] = '?';
                     break;
                 }
             }
         }
-        spu->vram[(VRAM_WIDTH + 1) * y + VRAM_WIDTH] = '\n';
+        spu->vram[position] = '\n';
     }
-    fwrite(spu->vram, VRAM_HEIGHT * (VRAM_WIDTH + 1), sizeof(char), stderr);
+    fwrite(spu->vram, position, sizeof(char), stderr);
 }
 
 void execute_program(cmd_t* code_array, struct Spu* spu)
@@ -110,7 +103,7 @@ void execute_program(cmd_t* code_array, struct Spu* spu)
     ssize_t ip = 0;
     while (ip > -1)
     {
-        SPU_DEBUG_MSG("ip = %lld\n", ip);
+        LOG_TRACE("ip = %lld", ip);
         cmd_t cmd = *((uint8_t*) code_array + ip);
         dump_stack(stderr, &spu->spu_stack, 0);
         switch (cmd & ID_MASK)
@@ -120,7 +113,7 @@ void execute_program(cmd_t* code_array, struct Spu* spu)
             #include "../commands.h"
             #undef DEF_CMD
 
-            default: printf(PAINT_TEXT(COLOR_RED, "There is not such command!\n")); return;
+            default: LOG_ERROR("There is not such command!"); return;
         }
     }
 }
