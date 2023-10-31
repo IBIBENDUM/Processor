@@ -19,6 +19,13 @@ enum log_level
     LOG_LVL_INFO,
     LOG_LVL_WARN,
     LOG_LVL_ERROR,
+    LOG_LVL_DISABLE
+};
+
+const char* const log_levels_strings[] =
+{
+    "TRACE", "DEBUG", "INFO",
+    "WARN" , "ERROR", "DISABLE"
 };
 
 #define LOG_TRACE(...) init_log(LOG_LVL_TRACE, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)

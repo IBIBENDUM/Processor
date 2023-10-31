@@ -2,8 +2,6 @@
 #include <stdio.h>
 #include <cwchar>
 #include <assert.h>
-#include <limits.h>
-#include <fcntl.h>
 
 #include "../Libs/textlib.h"
 #include "../Libs/colors.h"
@@ -11,15 +9,7 @@
 #include "../common.h"
 #include "assembler.h"
 
-#define ASM_DEBUG
-#ifdef ASM_DEBUG
-    #define ASM_DEBUG_MSG(...) DEBUG_MSG(COLOR_YELLOW, __VA_ARGS__)
-    #define ASM_ERROR_MSG(...) DEBUG_MSG(COLOR_RED, __VA_ARGS__)
-#else
-    #define LOG_TRACE(...)
-    #define ASM_ERROR_MSG(...)
-#endif
-
+const size_t MAX_ERRORS_AMOUNT = 50;
 
 enum cmd_error
 {
@@ -28,28 +18,38 @@ enum cmd_error
     #undef DEF_CMD_ERR
 };
 
+struct Error_msg
+{
+    size_t line_idx;
+    const wchar_t* err_str_ptr;
+    size_t err_str_len;
+    cmd_error err;
+};
+
+struct Compiler_errors
+{
+    Error_msg errors[MAX_ERRORS_AMOUNT];
+    size_t errors_amount;
+};
+
 const size_t MAX_ERR_STR_LENGTH = 25;
 struct Command
 {
-    int cmd_id;
-    int reg_id;
-    int imm;
+    arg_t cmd_id;
+    arg_t reg_id;
+    arg_t imm;
     uint8_t args_bitmask;
 
     bool has_ram;
     bool has_reg;
     bool has_imm;
     bool has_label;
-
-    size_t line;
-    const wchar_t* err_str_ptr;
-    size_t err_str_len;
 };
 
 const size_t MAX_LABEL_NAME_LENGTH = 50;
 struct Label
 {
-    int op_id = 0;
+    arg_t operation_id = 0;
     wchar_t name[MAX_LABEL_NAME_LENGTH] = {};
 };
 
@@ -58,6 +58,7 @@ struct Labels
 {
     Label labels_arr[LABELS_MAX_AMOUNT] = {};
     size_t amount = 0;
+    size_t final_size = 0;
 };
 
 static void emit_error_arg(Command* cmd, const wchar_t* source, const size_t len)
@@ -117,14 +118,6 @@ static cmd_error emit_code(void* code_array, size_t* const position, Command* co
 #undef EMIT_ARG
 #undef EMIT_BYTE_CODE
 
-// #define CHAR_TO_ZERO_AND_BACK(POINTER, ...)\
-//     do {
-//         const wchar_t TAKEN_CHAR = *POINTER;\
-//         *POINTER = L'\0';\
-//         __VA_ARGS__;\
-//         *POINTER = TAKEN_CHAR;\
-//     } while (0)
-
 static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
 {
     assert(arg_start_ptr);
@@ -142,7 +135,7 @@ static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
         return TOO_FEW_ARGS_ERR;
     }
 
-    // CHAR_TO_ZERO_AND_BACK();
+    // BAH: Macro for this?
     const wchar_t delim_char = arg_ptr[arg_len];
     arg_ptr[arg_len] = L'\0';
 
@@ -170,7 +163,7 @@ static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
             if (wcsncmp(arg_ptr, labels->labels_arr[id].name, arg_len) == 0)
             {
                 cmd->has_imm = true;
-                cmd->imm = labels->labels_arr[id].op_id;
+                cmd->imm = labels->labels_arr[id].operation_id;
                 arg_read = true;
             }
         }
@@ -244,25 +237,33 @@ static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cm
     return err;
 }
 
-static cmd_error emit_label(wchar_t* label_name_ptr, const size_t op_name_len, const size_t position, Labels* labels)
+static cmd_error emit_label(wchar_t* label_name_ptr, const size_t label_name_len, const size_t position, Labels* labels)
 {
     assert(label_name_ptr);
     assert(labels);
 
-    if (op_name_len > MAX_LABEL_NAME_LENGTH - 1)
+    if (label_name_len > MAX_LABEL_NAME_LENGTH - 1)
     {
         return CMD_TOO_LONG_LABEL_ERR;
     }
 
     for (size_t id = 0; id < labels->amount; id++)
     {
-        if (wcsncmp(labels->labels_arr[id].name, label_name_ptr, op_name_len - 1) == 0)
+        if (wcsncmp(labels->labels_arr[id].name, label_name_ptr, label_name_len - 1) == 0)
         {
-            labels->labels_arr[id].op_id = (int) position;
+            labels->labels_arr[id].operation_id = (int) position;
             return CMD_NO_ERR;
         }
     }
-    return CMD_WRONG_LABEL_NAME;
+
+    if (labels->final_size == 0)
+    {
+        wcsncpy(labels->labels_arr[labels->amount].name, label_name_ptr, label_name_len - 1);
+        labels->amount++;
+        return CMD_NO_ERR;
+    }
+
+    return CMD_REPEATED_LABEL_ERR;
 }
 
 static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_t position, Labels* labels)
@@ -273,14 +274,14 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
 
     size_t op_name_len = 0;
     wchar_t* op_name = get_word(line_ptr->start, &op_name_len);
-
+    LOG_DEBUG("%ls", line_ptr->start);
     if (op_name_len == 0)
     {
         LOG_TRACE("Empty line!");
         return CMD_NO_ERR;
     }
 
-    LOG_TRACE("==================================");
+    LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
     #define DEF_CMD(NAME, ARGS_BITMASK, ...)\
         do {\
             if (wcsncmp(op_name, L ## #NAME, op_name_len) == 0)\
@@ -320,26 +321,29 @@ static void print_line(const size_t line_idx)
     fprintf(stderr, PAINT_TEXT(COLOR_WHITE, "input_file: line %lld: "), line_idx);
 }
 
-static void print_asm_error(Command* cmd, cmd_error error)
+static void print_asm_error(Error_msg* error)
 {
+    assert(error);
+
+    LOG_TRACE("Printing asm error");
     #define DEF_CMD_ERR(NAME, FORMAT, ...)\
     case NAME:\
     {\
-        print_line(cmd->line);\
+        print_line(error->line_idx);\
         fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "error: "));\
-        fprintf(stderr, FORMAT, cmd->err_str_ptr);\
+        fprintf(stderr, FORMAT, error->err_str_len, error->err_str_ptr);\
         fprintf(stderr, "\n");\
         fprintf(stderr, TEXT_RESET);\
         break;\
     }
 
-    switch (error)
+    switch (error->err)
     {
         #include "cmd_errs.h"
 
         default:
         {
-            print_line(cmd->line);;
+            print_line(error->line_idx);
             fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "undefined error"));
             fprintf(stderr, TEXT_RESET);
             break;
@@ -349,54 +353,30 @@ static void print_asm_error(Command* cmd, cmd_error error)
     #undef DEF_CMD_ERR
 }
 
+// BAH: To separate files
+// BAH: Rename variables
+// BAH: Fix parsing
 
-static cmd_error set_labels_names(File* file, Labels* labels)
+static void print_errors(Compiler_errors* compiler_errors)
 {
-    assert(file);
-    assert(labels);
-    LOG_INFO("Setting labels names...");
-
-    LOG_INFO("file->line_amounts = %lld", file->line_amounts);
-    for (size_t line_idx = 0; line_idx < file->line_amounts; line_idx++)
-    {
-        line* line_ptr = file->lines_ptrs + line_idx;
-        replace_with_zero(line_ptr, L';');
-
-        Command cmd = {};
-
-        size_t op_name_len = 0;
-        wchar_t* op_name = get_word(line_ptr->start, &op_name_len);
-
-        if (op_name_len)
-        {
-            // BAH: if line contains only :?
-            if (op_name[op_name_len - 1] == ':')
-            {
-                if (labels->amount < LABELS_MAX_AMOUNT)
-                {
-                    for (size_t label_idx = 0; label_idx < labels->amount; label_idx++)
-                    {
-                        if (wcsncmp(labels->labels_arr[label_idx].name, op_name, op_name_len - 1) == 0)
-                        {
-                            cmd.line = line_idx + 1;
-                            emit_error_arg(&cmd, op_name, op_name_len - 1);
-
-                            print_asm_error(&cmd, CMD_REPEATED_LABEL_ERR);
-                            return CMD_REPEATED_LABEL_ERR;
-                        }
-                    }
-                    wcsncpy(labels->labels_arr[labels->amount].name, op_name, op_name_len - 1);
-                    labels->amount++;
-                }
-                else
-                    return CMD_TOO_MANY_LABEL_ERR;
-            }
-        }
-    }
-    return CMD_NO_ERR;
+    for (size_t i = 0; i < compiler_errors->errors_amount; i++)
+        print_asm_error(compiler_errors->errors + i);
 }
 
-static asm_error parse_file_to_commands(File* file, size_t* position, int* code_array, Labels* labels)
+static void emit_asm_error(Compiler_errors* compiler_errors, Command* cmd, cmd_error error)
+{
+    if (compiler_errors->errors_amount < MAX_ERRORS_AMOUNT)
+    {
+        size_t err_idx = compiler_errors->errors_amount;
+        compiler_errors->errors[err_idx].line_idx = cmd->line;
+        compiler_errors->errors[err_idx].err_str_ptr = cmd->err_str_ptr;
+        compiler_errors->errors[err_idx].err_str_len = cmd->err_str_len;
+        compiler_errors->errors[err_idx].err = error;
+        compiler_errors->errors_amount++;
+    }
+}
+
+static asm_error parse_file_to_commands(File* file, size_t* position, int* code_array, Labels* labels, Compiler_errors* errors)
 {
     assert(file);
     assert(position);
@@ -408,13 +388,17 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
     asm_error asm_err = ASM_NO_ERR;
 
     *position = 0;
+    memset(errors, 0, sizeof(Compiler_errors));
+
     for (size_t i = 0; i < file->line_amounts; i++)
     {
         line* line_ptr = file->lines_ptrs + i;
+        replace_with_zero(line_ptr, L';');
+
         Command cmd = {};
-        cmd.line = i + 1;
+        Error_msg err_msg = {};
         cmd_error err = CMD_NO_ERR;
-        err = parse_line_to_command(&cmd, line_ptr, *position, labels);
+        err = parse_line_to_command(&cmd, line_ptr, *position, labels, &err_msg);
         if (err == CMD_NO_ERR)
         {
             if (cmd.cmd_id != 0)
@@ -424,10 +408,11 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
         }
         if (err != CMD_NO_ERR)
         {
-            print_asm_error(&cmd, err);
+            emit_asm_error(errors, &err_msg, err);
             asm_err = ASM_PARSE_ARGS_ERR;
         }
     }
+    labels->final_size = labels->amount;
     return asm_err;
 }
 
@@ -454,7 +439,7 @@ static asm_error write_bytecode_to_file(const char* output_file_name, int* code_
     return ASM_NO_ERR;
 }
 
-asm_error text_to_asm(File* input_file, const char* output_file_name)
+static asm_error text_to_asm(File* input_file, const char* output_file_name)
 {
     assert(input_file);
     assert(output_file_name);
@@ -471,22 +456,35 @@ asm_error text_to_asm(File* input_file, const char* output_file_name)
         return ASM_MEM_ALLOC_ERR;
 
     Labels labels = {};
-
-    // TODO: Remove this
-    cmd_error err = set_labels_names(input_file, &labels);
-    if (err != CMD_NO_ERR)
-        return ASM_PARSE_LABELS_ERR;
-
+    Compiler_errors errors = {};
     size_t size = 0;
-    asm_error asm_err = parse_file_to_commands(input_file, &size, code_array, &labels);
-    if (asm_err != ASM_NO_ERR)
-        return asm_err;
 
+    parse_file_to_commands(input_file, &size, code_array, &labels, &errors);
+
+    asm_error asm_err = parse_file_to_commands(input_file, &size, code_array, &labels, &errors);
+    if (asm_err != ASM_NO_ERR)
+    {
+        print_errors(&errors);
+        return asm_err;
+    }
     LOG_DEBUG("size = %d", size);
-    parse_file_to_commands(input_file, &size, code_array, &labels);
     write_bytecode_to_file(output_file_name, code_array, size);
 
     FREE_AND_NULL(code_array);
 
     return ASM_NO_ERR;
+}
+
+asm_error file_to_asm(const char* input_file_name, const char* output_file_name)
+{
+    File input_file = {};
+    if (init_file(input_file_name, &input_file) == NULL)
+    {
+        LOG_ERROR("Can't read file");
+        return ASM_INPUT_FILE_READ_ERR;
+    }
+    asm_error err = text_to_asm(&input_file, output_file_name);
+    destruct_file(&input_file);
+
+    return err;
 }

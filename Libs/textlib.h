@@ -65,7 +65,7 @@ void replace_with_zero(line* line_ptr, const wchar_t symbol);
 
 void tokenize_lines(File* file);
 
-void init_file(const char* file_name, File* file);
+bool init_file(const char* file_name, File* file);
 
 void destruct_file(File* file_struct);
 

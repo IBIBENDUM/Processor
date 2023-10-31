@@ -4,6 +4,7 @@
 #include "../common.h"
 #include "../Libs/textlib.h"
 #include "../Libs/stack.h"
+#include "../Libs/stack_logs.h"
 
 #define FREE_AND_NULL(ptr)\
 do{\

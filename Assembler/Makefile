@@ -27,4 +27,4 @@ clean:
 	del /Q $(BUILD_DIR)
 
 run:
-	.\$(EXECUTABLE)
+	.\$(EXECUTABLE) -i ../Examples/input.s

@@ -7,8 +7,6 @@
 #include "../common.h"
 #include "../Libs/stack.h"
 
-// #define STK_DEBUG
-#include "../Libs/stack_logs.h"
 #include "../Libs/logs.h"
 
 void construct_spu(struct Spu* spu)
@@ -70,16 +68,16 @@ void print_ram(Spu* spu)
         for (size_t x = 0; x < VRAM_WIDTH; x++)
         {
             size_t position = (VRAM_WIDTH + 1) * y + x;
-            switch (spu->ram[position - y + VRAM_OFFSET])
+            switch (spu->ram[position - y + VRAM_OFFSET] / FLOAT_COEFFICIENT)
             {
                 case 0:
                 {
                     spu->vram[position] = '.';
                     break;
                 }
-                case 100:
+                case 1:
                 {
-                    spu->vram[position] = '0';
+                    spu->vram[position] = '▓';
                     break;
                 }
                 default:

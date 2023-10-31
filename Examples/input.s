@@ -1,5 +1,6 @@
-push 1
-pop [0]
+jmp:
+ush 1
+spop [0]
 push 2
 pop [1]
 push 3

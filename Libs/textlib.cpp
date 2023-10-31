@@ -124,23 +124,25 @@ line* parse_lines_to_arr(wchar_t* string, const size_t lines_amount)
     return lines_ptrs;
 }
 
-void init_file(const char* file_name, File* file)
+bool init_file(const char* file_name, File* file)
 {
     assert(file_name);
     assert(file);
 
     wchar_t* buffer = read_file(file_name, TEXT);
-    HANDLE_ERROR(buffer, "Error at buffering file");
+    HANDLE_ERROR(buffer, "Error at buffering file", false);
 
     size_t lines_amount = get_lines_amount(buffer);
 
     line* lines_ptrs = parse_lines_to_arr(buffer, lines_amount);
-    HANDLE_ERROR(lines_ptrs, "Error at lines parsing");
+    HANDLE_ERROR(lines_ptrs, "Error at lines parsing", false);
 
     file->buffer = buffer;
     file->file_name = file_name;
     file->lines_ptrs = lines_ptrs;
     file->line_amounts = lines_amount;
+
+    return true;
 }
 
 // TODO: Realization with line* (without file)

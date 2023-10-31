@@ -5,6 +5,7 @@
 
 #define ASM_ERRORS_LIST\
     DEF_ASM_ERR(ASM_NO_ERR)\
+    DEF_ASM_ERR(ASM_INPUT_FILE_READ_ERR)\
     DEF_ASM_ERR(ASM_FILE_OPEN_ERR)\
     DEF_ASM_ERR(ASM_FILE_CLOSE_ERR)\
     DEF_ASM_ERR(ASM_MEM_ALLOC_ERR)\
@@ -23,7 +24,7 @@ enum asm_error
 const char * const asm_errors_strs[] = { ASM_ERRORS_LIST };
 #undef DEF_ASM_ERR
 
-asm_error text_to_asm(File* input_file, const char* output_file_name);
+asm_error file_to_asm(const char* input_file_name, const char* output_file_name);
 
 void print_asm_err(asm_error err_code);
 

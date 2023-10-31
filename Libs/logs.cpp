@@ -8,12 +8,6 @@
 
 log_level current_log_level = LOG_LVL_TRACE;
 
-const char* log_levels_strings[] =
-{
-    "TRACE", "DEBUG", "INFO",
-    "WARN" , "ERROR"
-};
-
 const char* log_levels_colors[] =
 {
     COLOR_LIGHT_GRAY, COLOR_LIGHT_YELLOW, COLOR_LIGHT_CYAN,
