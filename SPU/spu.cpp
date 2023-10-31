@@ -9,6 +9,8 @@
 
 #include "../Libs/logs.h"
 
+// BAH: Add RAM sleep
+
 void construct_spu(struct Spu* spu)
 {
     LOG_INFO("Initializing SPU...");

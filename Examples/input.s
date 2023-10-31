@@ -1,6 +1,6 @@
-jmp:
-ush 1
+g
 spop [0]
+ush 1
 push 2
 pop [1]
 push 3

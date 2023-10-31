@@ -45,7 +45,7 @@
 #define FONT_REVERSE            "\033[7m"
 #define FONT_HIDDEN             "\033[8m"
 
-#define TEXT_RESET	            "\033[0m"
+#define TEXT_SETTINGS_RESET     "\033[0m"
 
 #define PAINT_TEXT(COLOR, TEXT) COLOR TEXT COLOR_STD
 

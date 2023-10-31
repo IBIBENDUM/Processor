@@ -18,19 +18,26 @@ enum cmd_error
     #undef DEF_CMD_ERR
 };
 
-struct Error_msg
+struct Command_error
 {
     size_t line_idx;
     const wchar_t* err_str_ptr;
-    size_t err_str_len;
-    cmd_error err;
+    int err_str_len;
+    cmd_error err_id;
 };
 
 struct Compiler_errors
 {
-    Error_msg errors[MAX_ERRORS_AMOUNT];
+    Command_error errors[MAX_ERRORS_AMOUNT];
     size_t errors_amount;
 };
+
+#define EMIT_CMD_ERROR_AND_RETURN_IT(CMD_ERROR_PTR, CMD_ERROR_ID)\
+    do {\
+        const wchar_t* op_name = OPERATIONS[cmd->cmd_id - 1].name;\
+        emit_cmd_error(CMD_ERROR_PTR, CMD_ERROR_ID, op_name, wcslen(op_name));\
+        return CMD_ERROR_ID;\
+    } while (0)
 
 const size_t MAX_ERR_STR_LENGTH = 25;
 struct Command
@@ -49,7 +56,7 @@ struct Command
 const size_t MAX_LABEL_NAME_LENGTH = 50;
 struct Label
 {
-    arg_t operation_id = 0;
+    arg_t op_id = 0;
     wchar_t name[MAX_LABEL_NAME_LENGTH] = {};
 };
 
@@ -61,13 +68,14 @@ struct Labels
     size_t final_size = 0;
 };
 
-static void emit_error_arg(Command* cmd, const wchar_t* source, const size_t len)
+static void emit_cmd_error(Command_error* cmd_err, cmd_error error, const wchar_t* source, const size_t len)
 {
-    cmd->err_str_ptr = source;
-    cmd->err_str_len = len;
+    cmd_err->err_str_ptr = source;
+    cmd_err->err_str_len = (int) len;
+    cmd_err->err_id      = error;
 }
 
-static bool check_args_correctness(const int cmd_code, Command* const cmd)
+static bool check_args_correctness(const int cmd_code, const Command* cmd)
 {
     for (size_t i = 0; i < ARGS_COMBINATIONS_AMOUNT; i++)
     {
@@ -89,20 +97,16 @@ static bool check_args_correctness(const int cmd_code, Command* const cmd)
     *position += sizeof(TYPE);\
     } while (0)
 
-static cmd_error emit_code(void* code_array, size_t* const position, Command* const cmd)
+static cmd_error emit_code(const Command* const cmd, Command_error* const cmd_err, void* code_array, size_t* const position)
 {
     assert(code_array);
+    assert(cmd);
     assert(position);
 
     int cmd_code = cmd->cmd_id | (ARG_IMM_MASK * cmd->has_imm) | (ARG_REG_MASK * cmd->has_reg) | (ARG_RAM_MASK * cmd->has_ram);
 
-    LOG_TRACE("cmd->args_bitmask = %d", cmd->args_bitmask);
-
     if (!check_args_correctness(cmd_code, cmd))
-    {
-        emit_error_arg(cmd, OPERATIONS[cmd->cmd_id - 1].name, wcslen(OPERATIONS[cmd->cmd_id - 1].name));
-        return CMD_WRONG_ARG_ERR;
-    }
+        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_WRONG_ARG_ERR);
 
     EMIT_BYTECODE(cmd_code, cmd_t);
 
@@ -118,21 +122,21 @@ static cmd_error emit_code(void* code_array, size_t* const position, Command* co
 #undef EMIT_ARG
 #undef EMIT_BYTE_CODE
 
-static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
+static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, wchar_t* arg_start_ptr)
 {
     assert(arg_start_ptr);
     assert(cmd);
     assert(labels);
+    assert(cmd_err);
 
     size_t arg_len = 0;
     wchar_t* arg_ptr = get_word(arg_start_ptr, &arg_len);
-    LOG_TRACE("arg_len = %lld", arg_len);
     LOG_TRACE("arg_ptr = %ls", arg_ptr);
+    LOG_TRACE("arg_len = %lld", arg_len);
 
     if (arg_len == 0)
     {
-        emit_error_arg(cmd, OPERATIONS[cmd->cmd_id - 1].name, wcslen(OPERATIONS[cmd->cmd_id - 1].name));
-        return TOO_FEW_ARGS_ERR;
+        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, TOO_FEW_ARGS_ERR);
     }
 
     // BAH: Macro for this?
@@ -140,18 +144,20 @@ static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
     arg_ptr[arg_len] = L'\0';
 
     bool arg_read = false;
-    wchar_t reg_id[2] = {};
+    const size_t REG_MARK_LEN = 1;
+    wchar_t reg_id[REG_MARK_LEN + 1] = {};
+
     int imm = 0;
     if (!cmd->has_reg && (arg_len == 3) && (swscanf(arg_ptr, L"r%1[a-d]x", &reg_id)))
     {
-        LOG_TRACE("Reg");
+        LOG_TRACE("Argument type = reg");
         cmd->reg_id = reg_id[0] - L'a' + 1;
         cmd->has_reg = true;
         arg_read = true;
     }
     else if (!cmd->has_imm && swscanf(arg_ptr, L"%d", &imm))
     {
-        LOG_TRACE("Imm");
+        LOG_TRACE("Argument type = imm");
         cmd->has_imm = true;
         cmd->imm = imm * FLOAT_COEFFICIENT;
         arg_read = true;
@@ -163,7 +169,7 @@ static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
             if (wcsncmp(arg_ptr, labels->labels_arr[id].name, arg_len) == 0)
             {
                 cmd->has_imm = true;
-                cmd->imm = labels->labels_arr[id].operation_id;
+                cmd->imm = labels->labels_arr[id].op_id;
                 arg_read = true;
             }
         }
@@ -172,17 +178,19 @@ static cmd_error get_arg(wchar_t* arg_start_ptr, Command* cmd, Labels* labels)
 
     if (!arg_read)
     {
-        emit_error_arg(cmd, OPERATIONS[cmd->cmd_id - 1].name, wcslen(OPERATIONS[cmd->cmd_id - 1].name));
-        return CMD_WRONG_ARG_ERR;
+        // BAH: add cmd_err to Command_error and make macro for this 3 lines;
+        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_WRONG_ARG_ERR);
     }
     return CMD_NO_ERR;
 }
 
-static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cmd, Labels* labels)
+static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int args_bitmask, wchar_t* op_ptr)
+// add const ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
 {
     assert(op_ptr);
     assert(cmd);
     assert(labels);
+    assert(cmd_err);
 
     if (args_bitmask == 1)
         return CMD_NO_ERR;
@@ -206,10 +214,11 @@ static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cm
     }
 
     cmd_error err = CMD_NO_ERR;
-    err = get_arg(op_ptr + left_br_pos, cmd, labels);
+    err = get_arg(cmd, labels, cmd_err, op_ptr + left_br_pos);
     if (err != CMD_NO_ERR)
         return err;
 
+    // Make in loop (while ... < MAX_ARGS_LEN and operator_pos+)
     size_t operator_pos = wcscspn(op_ptr + left_br_pos, L"+");
     if (operator_pos == wcslen(op_ptr + left_br_pos))
         operator_pos = 0;
@@ -219,7 +228,7 @@ static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cm
 
     if (operator_pos)
     {
-        err = get_arg(op_ptr + left_br_pos + operator_pos + 1, cmd, labels);
+        err = get_arg(cmd, labels, cmd_err, op_ptr + left_br_pos + operator_pos + 1);
     }
 
     if (cmd->has_ram)
@@ -230,14 +239,12 @@ static cmd_error parse_args(const int args_bitmask, wchar_t* op_ptr, Command* cm
     }
 
     if (get_word(NULL, NULL))
-    {
-        emit_error_arg(cmd, OPERATIONS[cmd->cmd_id - 1].name, wcslen(OPERATIONS[cmd->cmd_id - 1].name));
-        err = CMD_TOO_MANY_ARGS;
-    }
+        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS);
+
     return err;
 }
 
-static cmd_error emit_label(wchar_t* label_name_ptr, const size_t label_name_len, const size_t position, Labels* labels)
+static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_name_len, const size_t position, Labels* labels)
 {
     assert(label_name_ptr);
     assert(labels);
@@ -247,11 +254,11 @@ static cmd_error emit_label(wchar_t* label_name_ptr, const size_t label_name_len
         return CMD_TOO_LONG_LABEL_ERR;
     }
 
-    for (size_t id = 0; id < labels->amount; id++)
+    for (size_t label_id = 0; label_id < labels->amount; label_id++)
     {
-        if (wcsncmp(labels->labels_arr[id].name, label_name_ptr, label_name_len - 1) == 0)
+        if (wcsncmp(labels->labels_arr[label_id].name, label_name_ptr, label_name_len - 1) == 0)
         {
-            labels->labels_arr[id].operation_id = (int) position;
+            labels->labels_arr[label_id].op_id = (int) position;
             return CMD_NO_ERR;
         }
     }
@@ -266,7 +273,7 @@ static cmd_error emit_label(wchar_t* label_name_ptr, const size_t label_name_len
     return CMD_REPEATED_LABEL_ERR;
 }
 
-static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_t position, Labels* labels)
+static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_error* cmd_err, const line* line_ptr, const size_t position)
 {
     assert(cmd);
     assert(line_ptr);
@@ -274,7 +281,7 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
 
     size_t op_name_len = 0;
     wchar_t* op_name = get_word(line_ptr->start, &op_name_len);
-    LOG_DEBUG("%ls", line_ptr->start);
+    LOG_DEBUG("%ls", op_name);
     if (op_name_len == 0)
     {
         LOG_TRACE("Empty line!");
@@ -282,14 +289,15 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
     }
 
     LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+    #define STRLEN(S) (sizeof(S)/sizeof(S[0] - 1))
     #define DEF_CMD(NAME, ARGS_BITMASK, ...)\
         do {\
-            if (wcsncmp(op_name, L ## #NAME, op_name_len) == 0)\
+            if (wcsncmp(op_name, L ## #NAME, STRLEN(L ## #NAME)) == 0)\
             {\
                 const int id = OPERATIONS[NAME ## _enum].id;\
                 cmd->cmd_id = id;\
                 cmd->args_bitmask = ARGS_BITMASK;\
-                cmd_error parse_args_ret_val = parse_args(ARGS_BITMASK, op_name + op_name_len, cmd, labels);\
+                cmd_error parse_args_ret_val = parse_args(cmd, labels, cmd_err, ARGS_BITMASK, op_name + op_name_len);\
                 LOG_TRACE("parse_args = %d", parse_args_ret_val);\
                 LOG_TRACE("code: ram %d id %d reg %d imm %d", cmd->has_ram, cmd->cmd_id, cmd->reg_id, cmd->imm);\
                 \
@@ -298,64 +306,56 @@ static cmd_error parse_line_to_command(Command* cmd, line* line_ptr, const size_
         } while(0);
     #include "../commands.h"
     #undef DEF_CMD
+    #undef STRLEN
 
-    LOG_TRACE("%ls", line_ptr->start);
     wchar_t* label_end_ptr = wcschr(line_ptr->start, L':');
     if (label_end_ptr && *move_to_non_space_sym(label_end_ptr + 1) == L'\0')
     {
         cmd_error err = emit_label(op_name, op_name_len, position, labels);
         if (err != CMD_NO_ERR)
         {
-            emit_error_arg(cmd, op_name, op_name_len - 1);
+            emit_cmd_error(cmd_err, err, op_name, op_name_len - 1);
         }
         LOG_TRACE("LABEL LINE");
         return err;
     }
 
-    emit_error_arg(cmd, line_ptr->start, line_ptr->len);
+    emit_cmd_error(cmd_err, CMD_WRONG_NAME_ERR, op_name, op_name_len);
     return CMD_WRONG_NAME_ERR;
 }
 
-static void print_line(const size_t line_idx)
+static void print_error_position(const size_t line_idx)
 {
     fprintf(stderr, PAINT_TEXT(COLOR_WHITE, "input_file: line %lld: "), line_idx);
 }
 
-static void print_asm_error(Error_msg* error)
+static void print_asm_error(Command_error* cmd_err)
 {
-    assert(error);
+    assert(cmd_err);
 
-    LOG_TRACE("Printing asm error");
     #define DEF_CMD_ERR(NAME, FORMAT, ...)\
     case NAME:\
     {\
-        print_line(error->line_idx);\
+        print_error_position(cmd_err->line_idx);\
         fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "error: "));\
-        fprintf(stderr, FORMAT, error->err_str_len, error->err_str_ptr);\
+        fprintf(stderr, FORMAT, cmd_err->err_str_len, cmd_err->err_str_ptr);\
         fprintf(stderr, "\n");\
-        fprintf(stderr, TEXT_RESET);\
         break;\
     }
 
-    switch (error->err)
+    switch (cmd_err->err_id)
     {
         #include "cmd_errs.h"
 
         default:
         {
-            print_line(error->line_idx);
+            print_error_position(cmd_err->line_idx);
             fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "undefined error"));
-            fprintf(stderr, TEXT_RESET);
             break;
         }
     }
-
     #undef DEF_CMD_ERR
 }
-
-// BAH: To separate files
-// BAH: Rename variables
-// BAH: Fix parsing
 
 static void print_errors(Compiler_errors* compiler_errors)
 {
@@ -363,15 +363,16 @@ static void print_errors(Compiler_errors* compiler_errors)
         print_asm_error(compiler_errors->errors + i);
 }
 
-static void emit_asm_error(Compiler_errors* compiler_errors, Command* cmd, cmd_error error)
+static void emit_asm_error(Compiler_errors* compiler_errors, Command_error* err, cmd_error error_id)
 {
     if (compiler_errors->errors_amount < MAX_ERRORS_AMOUNT)
     {
         size_t err_idx = compiler_errors->errors_amount;
-        compiler_errors->errors[err_idx].line_idx = cmd->line;
-        compiler_errors->errors[err_idx].err_str_ptr = cmd->err_str_ptr;
-        compiler_errors->errors[err_idx].err_str_len = cmd->err_str_len;
-        compiler_errors->errors[err_idx].err = error;
+
+        compiler_errors->errors[err_idx].line_idx    = err->line_idx;
+        compiler_errors->errors[err_idx].err_str_ptr = err->err_str_ptr;
+        compiler_errors->errors[err_idx].err_str_len = err->err_str_len;
+        compiler_errors->errors[err_idx].err_id         = error_id;
         compiler_errors->errors_amount++;
     }
 }
@@ -383,27 +384,27 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
     assert(code_array);
     assert(labels);
 
-    LOG_INFO("Start parsing text to commands");
+    LOG_INFO("Start parsing file to commands...");
 
     asm_error asm_err = ASM_NO_ERR;
 
     *position = 0;
     memset(errors, 0, sizeof(Compiler_errors));
 
-    for (size_t i = 0; i < file->line_amounts; i++)
+    for (size_t i = 0; i < file->line_amount; i++)
     {
         line* line_ptr = file->lines_ptrs + i;
-        replace_with_zero(line_ptr, L';');
+        replace_with_zero(line_ptr, L';'); // Remove comments
 
         Command cmd = {};
-        Error_msg err_msg = {};
+        Command_error err_msg = { .line_idx = i + 1 };
         cmd_error err = CMD_NO_ERR;
-        err = parse_line_to_command(&cmd, line_ptr, *position, labels, &err_msg);
+        err = parse_line_to_command(&cmd, labels, &err_msg, line_ptr, *position);
         if (err == CMD_NO_ERR)
         {
             if (cmd.cmd_id != 0)
             {
-                err = emit_code(code_array, position, &cmd);
+                err = emit_code(&cmd, &err_msg, code_array, position);
             }
         }
         if (err != CMD_NO_ERR)
@@ -413,6 +414,9 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
         }
     }
     labels->final_size = labels->amount;
+
+    LOG_INFO("File parsed!");
+
     return asm_err;
 }
 
@@ -421,6 +425,8 @@ static asm_error write_bytecode_to_file(const char* output_file_name, int* code_
     assert(output_file_name);
     assert(code_array);
     assert(size);
+
+    LOG_INFO("Writing bytecode to file...");
 
     FILE* file_ptr = fopen(output_file_name, "wb");
     if (!file_ptr)
@@ -436,6 +442,8 @@ static asm_error write_bytecode_to_file(const char* output_file_name, int* code_
     if (f_close_ret_val)
         return ASM_FILE_CLOSE_ERR;
 
+    LOG_INFO("Bytecode has been written!");
+
     return ASM_NO_ERR;
 }
 
@@ -447,8 +455,9 @@ static asm_error text_to_asm(File* input_file, const char* output_file_name)
     LOG_INFO("Prepare text for converting...");
 
     tokenize_lines(input_file);
-    const size_t line_amount = input_file->line_amounts;
+    const size_t line_amount = input_file->line_amount;
 
+    // Find maximum type len and reserve place for the largest
     const size_t max_arg_len = (sizeof(cmd_t) > sizeof(arg_t)) ? sizeof(cmd_t) : sizeof(arg_t);
     arg_t* code_array = (arg_t*) calloc(line_amount * MAX_ARGS_AMOUNT, max_arg_len);
 
@@ -477,12 +486,16 @@ static asm_error text_to_asm(File* input_file, const char* output_file_name)
 
 asm_error file_to_asm(const char* input_file_name, const char* output_file_name)
 {
+    assert(input_file_name);
+    assert(output_file_name);
+
     File input_file = {};
-    if (init_file(input_file_name, &input_file) == NULL)
+    if (!init_file(input_file_name, &input_file))
     {
         LOG_ERROR("Can't read file");
         return ASM_INPUT_FILE_READ_ERR;
     }
+
     asm_error err = text_to_asm(&input_file, output_file_name);
     destruct_file(&input_file);
 

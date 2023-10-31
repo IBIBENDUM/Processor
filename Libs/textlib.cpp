@@ -140,7 +140,7 @@ bool init_file(const char* file_name, File* file)
     file->buffer = buffer;
     file->file_name = file_name;
     file->lines_ptrs = lines_ptrs;
-    file->line_amounts = lines_amount;
+    file->line_amount = lines_amount;
 
     return true;
 }
@@ -150,7 +150,7 @@ void tokenize_lines(File* file)
 {
     assert(file);
 
-    for (size_t i = 0; i < file->line_amounts; i++)
+    for (size_t i = 0; i < file->line_amount; i++)
     {
         line* line_ptr = file->lines_ptrs + i;
         *(line_ptr->start + line_ptr->len - 1) = 0;
@@ -161,7 +161,7 @@ void destruct_file(File* file_struct)
 {
     assert(file_struct);
 
-    empty_lines(file_struct->lines_ptrs, file_struct->line_amounts);
+    empty_lines(file_struct->lines_ptrs, file_struct->line_amount);
     FREE_AND_NULL(file_struct->buffer);
     FREE_AND_NULL(file_struct->lines_ptrs);
 }
@@ -253,11 +253,6 @@ const wchar_t* move_to_alphabet_sym(const wchar_t* str, const int direction)
     return str;
 }
 
-size_t get_word_len(wchar_t* string, const wchar_t* delim)
-{
-    return wcscspn(string, delim);
-}
-
 wchar_t* move_to_non_space_sym(wchar_t* str)
 {
     assert(str);
@@ -272,7 +267,6 @@ wchar_t* get_word(wchar_t* string, size_t* word_len_ptr)
 {
     static wchar_t* backup_string;
 
-    // printf("%ls\n", backup_string);
     if (!string)
         string = backup_string;
 
@@ -280,7 +274,7 @@ wchar_t* get_word(wchar_t* string, size_t* word_len_ptr)
         return NULL;
 
     string = move_to_non_space_sym(string);
-    size_t word_len = get_word_len(string, L" ");
+    size_t word_len = wcscspn(string, L" ");
     if (word_len_ptr)
         *word_len_ptr = word_len;
 

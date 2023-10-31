@@ -50,7 +50,7 @@ static void write_log(Log_event* log_info)
     assert(log_info);
 
     const char* time_str = cast_time_to_str(log_info->time);
-    fprintf(log_info->output, COLOR_DARK_GRAY "[%s] %s%-5s: " COLOR_WHITE "%s:%s():%d:\n" TEXT_RESET, time_str, log_levels_colors[log_info->level], log_levels_strings[log_info->level], log_info->file, log_info->func, log_info->line);
+    fprintf(log_info->output, COLOR_DARK_GRAY "[%s] %s%-5s: " COLOR_WHITE "%s:%s():%d:\n" TEXT_SETTINGS_RESET, time_str, log_levels_colors[log_info->level], log_levels_strings[log_info->level], log_info->file, log_info->func, log_info->line);
     vfprintf(log_info->output, log_info->format, log_info->args);
     fprintf(log_info->output, "\n\n");
 }

@@ -52,7 +52,7 @@ typedef struct File
     const char* file_name;
     wchar_t* buffer;
     line* lines_ptrs;
-    size_t line_amounts;
+    size_t line_amount;
 } File;
 
 ssize_t get_file_size(const ssize_t descriptor);
@@ -90,8 +90,6 @@ int compare_lines_forward(const void* line_1_ptr, const void* line_2_ptr);
 int compare_lines_backward(const void* line_1_ptr, const void* line_2_ptr);
 
 void empty_lines(line* line_ptr);
-
-size_t get_word_len(wchar_t* string, const wchar_t* delim);
 
 wchar_t* get_word(wchar_t* string, size_t* word_len);
 
