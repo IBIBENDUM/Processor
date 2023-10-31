@@ -22,7 +22,6 @@ int main(const int argc, char* const* argv)
         return 1;
 
     setlocale(LC_ALL, "");
-    set_log_level(LOG_LVL_DEBUG);
 
     asm_error err = ASM_NO_ERR;
     err = file_to_asm(values.input_file_name, values.output_file_name);

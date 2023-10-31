@@ -93,6 +93,8 @@ void empty_lines(line* line_ptr);
 
 wchar_t* get_word(wchar_t* string, size_t* word_len);
 
+size_t cscspn (wchar_t* source, const wchar_t* ref);
+
 wchar_t* move_to_non_space_sym(wchar_t* str);
 
 void print_tatarstan_symbolism(FILE* file_ptr);

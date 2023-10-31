@@ -19,7 +19,8 @@ enum log_level
     LOG_LVL_INFO,
     LOG_LVL_WARN,
     LOG_LVL_ERROR,
-    LOG_LVL_DISABLE
+    LOG_LVL_DISABLE,
+    LOG_AMOUNT_OF_LVLS
 };
 
 const char* const log_levels_strings[] =

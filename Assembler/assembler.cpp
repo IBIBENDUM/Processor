@@ -158,7 +158,8 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
     {
         for (size_t id = 0; id < labels->amount; id++)
         {
-            if (wcsncmp(arg_ptr, labels->labels_arr[id].name, arg_len) == 0)
+            const wchar_t* label_name = labels->labels_arr[id].name;
+            if (wcsncmp(arg_ptr, label_name, wcslen(label_name)) == 0)
             {
                 cmd->has_imm = true;
                 cmd->imm = labels->labels_arr[id].op_id;
@@ -175,6 +176,14 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
     return CMD_NO_ERR;
 }
 
+#define RETURN_ERR_IF_GARBAGE_ARGS(START_PTR)\
+    do {\
+        size_t GARBAGE_WORD_LEN = 0;\
+        get_word(START_PTR, &GARBAGE_WORD_LEN);\
+        if (GARBAGE_WORD_LEN)\
+            EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS);\
+    } while (0)
+
 static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int args_bitmask, wchar_t* op_ptr)
 {
     assert(op_ptr);
@@ -185,53 +194,67 @@ static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err
     if (args_bitmask == 1)
         return CMD_NO_ERR;
 
-    LOG_TRACE("op_ptr = %ls", op_ptr);
-    size_t left_br_pos = 0;
-    size_t right_br_pos = 0;
+    ssize_t left_br_pos = cscspn(op_ptr, L"[");
+    ssize_t right_br_pos = cscspn(op_ptr, L"]");
 
-    swscanf(op_ptr, L" [%n%*[^]]%n ", &left_br_pos, &right_br_pos);
-    if (right_br_pos)
+    // BAH: Make macro or something?
+    if (left_br_pos > 0 && right_br_pos > 0)
     {
-        LOG_TRACE("cmd->has_ram = true");
         cmd->has_ram = true;
-    }
-
-    if (cmd->has_ram)
-    {
-        op_ptr[left_br_pos - 1] = L'\0';
+        op_ptr[left_br_pos] = L'\0';
         op_ptr[right_br_pos] = L'\0';
-        LOG_TRACE("%ls", op_ptr + left_br_pos);
     }
 
     cmd_error err = CMD_NO_ERR;
-    err = get_arg(cmd, labels, cmd_err, op_ptr + left_br_pos);
+    err = get_arg(cmd, labels, cmd_err, op_ptr + left_br_pos + 1);
     if (err != CMD_NO_ERR)
         return err;
 
-    // Make in loop (while ... < MAX_ARGS_LEN and operator_pos+)
-    size_t operator_pos = wcscspn(op_ptr + left_br_pos, L"+");
-    if (operator_pos == wcslen(op_ptr + left_br_pos))
-        operator_pos = 0;
+    // Find + operator
+    size_t operator_pos = cscspn(op_ptr + left_br_pos + 1, L"+");
 
-    LOG_TRACE("op_ptr + left_br_pos = %ls", op_ptr + left_br_pos);
-    LOG_TRACE("operator_pos = %lld", operator_pos);
-
+    // Get second argument
     if (operator_pos)
-    {
-        err = get_arg(cmd, labels, cmd_err, op_ptr + left_br_pos + operator_pos + 1);
-    }
+        err = get_arg(cmd, labels, cmd_err, op_ptr + left_br_pos + operator_pos + 2);
 
     if (cmd->has_ram)
     {
-        op_ptr[left_br_pos - 1] = L'[';
+        op_ptr[left_br_pos] = L'[';
         op_ptr[right_br_pos] = L']';
-        LOG_TRACE("%ls", op_ptr + left_br_pos - 1);
+
+        // Check for garbage args inside brackets
+        RETURN_ERR_IF_GARBAGE_ARGS(NULL);
+
+        // Check for garbage args outside brackets
+        RETURN_ERR_IF_GARBAGE_ARGS(op_ptr + right_br_pos + 1);
     }
-
-    if (get_word(NULL, NULL))
-        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS);
-
+    else
+    {
+        // Check for garbage if no RAM
+        RETURN_ERR_IF_GARBAGE_ARGS(NULL);
+    }
     return err;
+}
+#undef RETURN_ERR_IF_GARBAGE_ARGS
+
+static bool parse_label(const line* line_ptr, wchar_t* op_name, const size_t op_name_len)
+{
+    bool is_label = false;
+    if (op_name_len > 1)
+    {
+        size_t colon_pos = wcscspn(line_ptr->start, L":");
+        if (colon_pos != line_ptr->len)
+        {
+            if (op_name[op_name_len-1] == L':')
+                is_label = true;
+            else if (*move_to_non_space_sym(op_name + op_name_len) == L':')
+                is_label = true;
+
+            if (*move_to_non_space_sym(line_ptr->start + colon_pos + 1) != L'\0')
+                is_label = false;
+        }
+    }
+    return is_label;
 }
 
 static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_error* cmd_err, const line* line_ptr, const size_t position)
@@ -249,11 +272,11 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
         return CMD_NO_ERR;
     }
 
-    LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-    #define STRLEN(S) (sizeof(S)/sizeof(S[0] - 1))
+    // BAH: Or loop?
+    #define STRLEN(S) (sizeof(S)/sizeof(S[0]) - 1)
     #define DEF_CMD(NAME, ARGS_BITMASK, ...)\
         do {\
-            if (wcsncmp(op_name, L ## #NAME, STRLEN(L ## #NAME)) == 0)\
+            if (op_name_len == STRLEN(L ## #NAME) && wcsncmp(op_name, L ## #NAME, STRLEN(L ## #NAME)) == 0)\
             {\
                 const int id = OPERATIONS[NAME ## _enum].id;\
                 cmd->cmd_id = id;\
@@ -271,25 +294,17 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
     #undef DEF_CMD
     #undef STRLEN
 
-// aboba:        +
-// aboba :       +
-// aboba: dassda X
-// : dassda      X
-// :
-
-    wchar_t* label_end_ptr = wcschr(line_ptr->start, L':');
-    if (label_end_ptr && *move_to_non_space_sym(label_end_ptr + 1) == L'\0')
+    if (parse_label(line_ptr, op_name, op_name_len))
     {
         cmd_error err = emit_label(op_name, op_name_len, position, labels);
         if (err != CMD_NO_ERR)
         {
-            emit_cmd_error(cmd_err, err, op_name, op_name_len - 1);
+            emit_cmd_error(cmd_err, err, move_to_non_space_sym(line_ptr->start), line_ptr->len - 1);
         }
         LOG_TRACE("LABEL LINE");
         return err;
     }
-
-    emit_cmd_error(cmd_err, CMD_WRONG_NAME_ERR, op_name, op_name_len);
+    emit_cmd_error(cmd_err, CMD_WRONG_NAME_ERR, move_to_non_space_sym(line_ptr->start), line_ptr->len - 1);
     return CMD_WRONG_NAME_ERR;
 }
 
@@ -309,6 +324,8 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
 
     for (size_t i = 0; i < file->line_amount; i++)
     {
+        LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
+        LOG_DEBUG("line = %d", i + 1);
         line* line_ptr = file->lines_ptrs + i;
         replace_with_zero(line_ptr, L';'); // Remove comments
 
@@ -344,6 +361,7 @@ static asm_error write_bytecode_to_file(const char* output_file_name, int* code_
 
     LOG_INFO("Writing bytecode to file...");
 
+    // BAH: what if wrong folder name?
     FILE* file_ptr = fopen(output_file_name, "wb");
     if (!file_ptr)
         return ASM_FILE_OPEN_ERR;

@@ -12,8 +12,6 @@ OBJS = $(patsubst %.cpp, $(BUILD_DIR)/%.o, $(SRCS)) $(LIB_OBJS)
 
 compile: $(BUILD_DIR) $(EXECUTABLE)
 
-rerun: clean compile run
-
 $(EXECUTABLE): $(OBJS)
 	g++ $^ $(CFLAGS) -o $@
 

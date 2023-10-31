@@ -1,4 +1,4 @@
 /SPU/logs
-
+/Libs/sources
 *.o
 *.exe
