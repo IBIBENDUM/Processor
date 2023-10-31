@@ -21,7 +21,10 @@ enum asm_error
 #undef DEF_ASM_ERR
 
 #define DEF_ASM_ERR(NAME) #NAME,
-const char * const asm_errors_strs[] = { ASM_ERRORS_LIST };
+const char * const asm_errors_strs[] =
+{
+    ASM_ERRORS_LIST
+};
 #undef DEF_ASM_ERR
 
 asm_error file_to_asm(const char* input_file_name, const char* output_file_name);

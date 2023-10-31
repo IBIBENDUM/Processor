@@ -8,36 +8,7 @@
 #include "../Libs/logs.h"
 #include "../common.h"
 #include "assembler.h"
-
-const size_t MAX_ERRORS_AMOUNT = 50;
-
-enum cmd_error
-{
-    #define DEF_CMD_ERR(NAME, ...) NAME,
-    #include "cmd_errs.h"
-    #undef DEF_CMD_ERR
-};
-
-struct Command_error
-{
-    size_t line_idx;
-    const wchar_t* err_str_ptr;
-    int err_str_len;
-    cmd_error err_id;
-};
-
-struct Compiler_errors
-{
-    Command_error errors[MAX_ERRORS_AMOUNT];
-    size_t errors_amount;
-};
-
-#define EMIT_CMD_ERROR_AND_RETURN_IT(CMD_ERROR_PTR, CMD_ERROR_ID)\
-    do {\
-        const wchar_t* op_name = OPERATIONS[cmd->cmd_id - 1].name;\
-        emit_cmd_error(CMD_ERROR_PTR, CMD_ERROR_ID, op_name, wcslen(op_name));\
-        return CMD_ERROR_ID;\
-    } while (0)
+#include "assembler_errors.h"
 
 const size_t MAX_ERR_STR_LENGTH = 25;
 struct Command
@@ -67,13 +38,6 @@ struct Labels
     size_t amount = 0;
     size_t final_size = 0;
 };
-
-static void emit_cmd_error(Command_error* cmd_err, cmd_error error, const wchar_t* source, const size_t len)
-{
-    cmd_err->err_str_ptr = source;
-    cmd_err->err_str_len = (int) len;
-    cmd_err->err_id      = error;
-}
 
 static bool check_args_correctness(const int cmd_code, const Command* cmd)
 {
@@ -118,9 +82,37 @@ static cmd_error emit_code(const Command* const cmd, Command_error* const cmd_er
 
     return CMD_NO_ERR;
 }
-
 #undef EMIT_ARG
 #undef EMIT_BYTE_CODE
+
+static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_name_len, const size_t position, Labels* labels)
+{
+    assert(label_name_ptr);
+    assert(labels);
+
+    if (label_name_len > MAX_LABEL_NAME_LENGTH - 1)
+    {
+        return CMD_TOO_LONG_LABEL_ERR;
+    }
+
+    for (size_t label_id = 0; label_id < labels->amount; label_id++)
+    {
+        if (wcsncmp(labels->labels_arr[label_id].name, label_name_ptr, label_name_len - 1) == 0)
+        {
+            labels->labels_arr[label_id].op_id = (int) position;
+            return CMD_NO_ERR;
+        }
+    }
+
+    if (labels->final_size == 0)
+    {
+        wcsncpy(labels->labels_arr[labels->amount].name, label_name_ptr, label_name_len - 1);
+        labels->amount++;
+        return CMD_NO_ERR;
+    }
+
+    return CMD_REPEATED_LABEL_ERR;
+}
 
 static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, wchar_t* arg_start_ptr)
 {
@@ -178,14 +170,12 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
 
     if (!arg_read)
     {
-        // BAH: add cmd_err to Command_error and make macro for this 3 lines;
         EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_WRONG_ARG_ERR);
     }
     return CMD_NO_ERR;
 }
 
 static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int args_bitmask, wchar_t* op_ptr)
-// add const ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^
 {
     assert(op_ptr);
     assert(cmd);
@@ -244,35 +234,6 @@ static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err
     return err;
 }
 
-static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_name_len, const size_t position, Labels* labels)
-{
-    assert(label_name_ptr);
-    assert(labels);
-
-    if (label_name_len > MAX_LABEL_NAME_LENGTH - 1)
-    {
-        return CMD_TOO_LONG_LABEL_ERR;
-    }
-
-    for (size_t label_id = 0; label_id < labels->amount; label_id++)
-    {
-        if (wcsncmp(labels->labels_arr[label_id].name, label_name_ptr, label_name_len - 1) == 0)
-        {
-            labels->labels_arr[label_id].op_id = (int) position;
-            return CMD_NO_ERR;
-        }
-    }
-
-    if (labels->final_size == 0)
-    {
-        wcsncpy(labels->labels_arr[labels->amount].name, label_name_ptr, label_name_len - 1);
-        labels->amount++;
-        return CMD_NO_ERR;
-    }
-
-    return CMD_REPEATED_LABEL_ERR;
-}
-
 static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_error* cmd_err, const line* line_ptr, const size_t position)
 {
     assert(cmd);
@@ -281,7 +242,7 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
 
     size_t op_name_len = 0;
     wchar_t* op_name = get_word(line_ptr->start, &op_name_len);
-    LOG_DEBUG("%ls", op_name);
+    LOG_DEBUG("op_name = %.*ls", op_name_len, op_name);
     if (op_name_len == 0)
     {
         LOG_TRACE("Empty line!");
@@ -304,9 +265,17 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
                 return parse_args_ret_val;\
             }\
         } while(0);
+
     #include "../commands.h"
+
     #undef DEF_CMD
     #undef STRLEN
+
+// aboba:        +
+// aboba :       +
+// aboba: dassda X
+// : dassda      X
+// :
 
     wchar_t* label_end_ptr = wcschr(line_ptr->start, L':');
     if (label_end_ptr && *move_to_non_space_sym(label_end_ptr + 1) == L'\0')
@@ -322,59 +291,6 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
 
     emit_cmd_error(cmd_err, CMD_WRONG_NAME_ERR, op_name, op_name_len);
     return CMD_WRONG_NAME_ERR;
-}
-
-static void print_error_position(const size_t line_idx)
-{
-    fprintf(stderr, PAINT_TEXT(COLOR_WHITE, "input_file: line %lld: "), line_idx);
-}
-
-static void print_asm_error(Command_error* cmd_err)
-{
-    assert(cmd_err);
-
-    #define DEF_CMD_ERR(NAME, FORMAT, ...)\
-    case NAME:\
-    {\
-        print_error_position(cmd_err->line_idx);\
-        fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "error: "));\
-        fprintf(stderr, FORMAT, cmd_err->err_str_len, cmd_err->err_str_ptr);\
-        fprintf(stderr, "\n");\
-        break;\
-    }
-
-    switch (cmd_err->err_id)
-    {
-        #include "cmd_errs.h"
-
-        default:
-        {
-            print_error_position(cmd_err->line_idx);
-            fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "undefined error"));
-            break;
-        }
-    }
-    #undef DEF_CMD_ERR
-}
-
-static void print_errors(Compiler_errors* compiler_errors)
-{
-    for (size_t i = 0; i < compiler_errors->errors_amount; i++)
-        print_asm_error(compiler_errors->errors + i);
-}
-
-static void emit_asm_error(Compiler_errors* compiler_errors, Command_error* err, cmd_error error_id)
-{
-    if (compiler_errors->errors_amount < MAX_ERRORS_AMOUNT)
-    {
-        size_t err_idx = compiler_errors->errors_amount;
-
-        compiler_errors->errors[err_idx].line_idx    = err->line_idx;
-        compiler_errors->errors[err_idx].err_str_ptr = err->err_str_ptr;
-        compiler_errors->errors[err_idx].err_str_len = err->err_str_len;
-        compiler_errors->errors[err_idx].err_id         = error_id;
-        compiler_errors->errors_amount++;
-    }
 }
 
 static asm_error parse_file_to_commands(File* file, size_t* position, int* code_array, Labels* labels, Compiler_errors* errors)
