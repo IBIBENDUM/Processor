@@ -6,11 +6,12 @@
 #include "../Libs/textlib.h"
 #include "../Libs/colors.h"
 #include "../Libs/logs.h"
+#include "../Libs/utils.h"
 #include "../common.h"
 #include "assembler.h"
 #include "assembler_errors.h"
 
-const size_t MAX_ERR_STR_LENGTH = 25;
+const size_t MAX_ERR_STR_LENGTH = 25; ///< Length of error string argument (e.g. label name)
 struct Command
 {
     arg_t cmd_id;
@@ -45,20 +46,19 @@ static bool check_args_correctness(const int cmd_code, const Command* cmd)
     {
         if (cmd->args_bitmask & (1 << i))
         {
-            if ((cmd_code >> ARGS_MASK_OFFSET) == args_combinations_arr[i])
+            if ((cmd_code & (~ID_MASK)) == args_combinations_arr[i])
             {
                 return true;
-                break;
             }
         }
     }
     return false;
 }
 
-#define EMIT_BYTECODE(CODE, TYPE)\
-    do {\
-    *(TYPE*)((uint8_t*) code_array + *position) = CODE;\
-    *position += sizeof(TYPE);\
+#define EMIT_BYTECODE(CODE, TYPE)                       \
+    do {                                                \
+    *(TYPE*)((uint8_t*) code_array + *position) = CODE; \
+    *position += sizeof(TYPE);                          \
     } while (0)
 
 static cmd_error emit_code(const Command* const cmd, Command_error* const cmd_err, void* code_array, size_t* const position)
@@ -82,7 +82,6 @@ static cmd_error emit_code(const Command* const cmd, Command_error* const cmd_er
 
     return CMD_NO_ERR;
 }
-#undef EMIT_ARG
 #undef EMIT_BYTE_CODE
 
 static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_name_len, const size_t position, Labels* labels)
@@ -95,18 +94,22 @@ static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_na
         return CMD_TOO_LONG_LABEL_ERR;
     }
 
-    for (size_t label_id = 0; label_id < labels->amount; label_id++)
-    {
-        if (wcsncmp(labels->labels_arr[label_id].name, label_name_ptr, label_name_len - 1) == 0)
-        {
-            labels->labels_arr[label_id].op_id = (int) position;
-            return CMD_NO_ERR;
-        }
-    }
+    // // Try to find label in labels array
+    // for (size_t label_id = 0; label_id < labels->amount; label_id++)
+    // {
+    //     if (wcsncmp(labels->labels_arr[label_id].name, label_name_ptr, label_name_len - 1) == 0)
+    //     {
+    //         labels->labels_arr[label_id].op_id = (int) position;
+    //         return CMD_NO_ERR;
+    //     }
+    // }
 
+    // Check for first compilation
     if (labels->final_size == 0)
     {
         wcsncpy(labels->labels_arr[labels->amount].name, label_name_ptr, label_name_len - 1);
+        labels->labels_arr[labels->amount].op_id = (int) position;
+
         labels->amount++;
         return CMD_NO_ERR;
     }
@@ -127,9 +130,7 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
     LOG_TRACE("arg_len = %lld", arg_len);
 
     if (arg_len == 0)
-    {
         EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, TOO_FEW_ARGS_ERR);
-    }
 
     // BAH: Macro for this?
     const wchar_t delim_char = arg_ptr[arg_len];
@@ -139,19 +140,21 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
     const size_t REG_MARK_LEN = 1;
     wchar_t reg_id[REG_MARK_LEN + 1] = {};
 
-    int imm = 0;
-    if (!cmd->has_reg && (arg_len == 3) && (swscanf(arg_ptr, L"r%1[a-d]x", &reg_id)))
+    wchar_t* strtod_end_ptr = NULL;
+    double imm_double = wcstod(arg_ptr, &strtod_end_ptr);
+    if (!cmd->has_imm && *strtod_end_ptr == L'\0')
+    {
+        LOG_INFO("imm_double = %lf", imm_double);
+        LOG_TRACE("Argument type = imm");
+        cmd->has_imm = true;
+        cmd->imm = (int) (imm_double * FLOAT_COEFFICIENT);
+        arg_read = true;
+    }
+    else if (!cmd->has_reg && (arg_len == 3) && (swscanf(arg_ptr, L"r%1[a-d]x", &reg_id)))
     {
         LOG_TRACE("Argument type = reg");
         cmd->reg_id = reg_id[0] - L'a' + 1;
         cmd->has_reg = true;
-        arg_read = true;
-    }
-    else if (!cmd->has_imm && swscanf(arg_ptr, L"%d", &imm))
-    {
-        LOG_TRACE("Argument type = imm");
-        cmd->has_imm = true;
-        cmd->imm = imm * FLOAT_COEFFICIENT;
         arg_read = true;
     }
     else
@@ -176,12 +179,12 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
     return CMD_NO_ERR;
 }
 
-#define RETURN_ERR_IF_GARBAGE_ARGS(START_PTR)\
-    do {\
-        size_t GARBAGE_WORD_LEN = 0;\
-        get_word(START_PTR, &GARBAGE_WORD_LEN);\
-        if (GARBAGE_WORD_LEN)\
-            EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS);\
+#define RETURN_ERR_IF_GARBAGE_ARGS(START_PTR)                         \
+    do {                                                              \
+        size_t GARBAGE_WORD_LEN = 0;                                  \
+        get_word(START_PTR, &GARBAGE_WORD_LEN);                       \
+        if (GARBAGE_WORD_LEN)                                         \
+            EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS); \
     } while (0)
 
 static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int args_bitmask, wchar_t* op_ptr)
@@ -242,14 +245,19 @@ static bool parse_label(const line* line_ptr, wchar_t* op_name, const size_t op_
     bool is_label = false;
     if (op_name_len > 1)
     {
+        // Check for colon existence in line
         size_t colon_pos = wcscspn(line_ptr->start, L":");
         if (colon_pos != line_ptr->len)
         {
+            // Because op_name contains first word we can check only two cases
+            // Check for 'label:' case
             if (op_name[op_name_len-1] == L':')
                 is_label = true;
+            // Check for 'label :' case
             else if (*move_to_non_space_sym(op_name + op_name_len) == L':')
                 is_label = true;
 
+            // Check for 'label: garbage' case
             if (*move_to_non_space_sym(line_ptr->start + colon_pos + 1) != L'\0')
                 is_label = false;
         }
@@ -289,7 +297,7 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
             }\
         } while(0);
 
-    #include "../commands.h"
+    #include "../commands.inc"
 
     #undef DEF_CMD
     #undef STRLEN
@@ -345,6 +353,8 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
             emit_asm_error(errors, &err_msg, err);
             asm_err = ASM_PARSE_ARGS_ERR;
         }
+
+        LOG_DEBUG("position = %d", *position);
     }
     labels->final_size = labels->amount;
 
@@ -403,17 +413,18 @@ static asm_error text_to_asm(File* input_file, const char* output_file_name)
     size_t size = 0;
 
     parse_file_to_commands(input_file, &size, code_array, &labels, &errors);
-
+    LOG_DEBUG("labels.labels_arr[0].op_id = %d", labels.labels_arr[0].op_id);
+    LOG_DEBUG("labels.labels_arr[0].name = %ls", labels.labels_arr[0].name);
     asm_error asm_err = parse_file_to_commands(input_file, &size, code_array, &labels, &errors);
     if (asm_err != ASM_NO_ERR)
     {
-        print_errors(&errors);
+        print_compiler_errors(&errors);
         return asm_err;
     }
     LOG_DEBUG("size = %d", size);
     write_bytecode_to_file(output_file_name, code_array, size);
 
-    FREE_AND_NULL(code_array);
+    free_and_null(code_array);
 
     return ASM_NO_ERR;
 }

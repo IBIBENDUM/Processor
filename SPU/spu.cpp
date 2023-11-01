@@ -5,9 +5,10 @@
 
 #include "spu.h"
 #include "../common.h"
+#define STK_DEBUG
 #include "../Libs/stack.h"
-
 #include "../Libs/logs.h"
+#include "../Libs/utils.h"
 
 // BAH: Add RAM sleep
 
@@ -24,8 +25,7 @@ void destruct_spu(struct Spu* spu)
 {
     LOG_INFO("Destructing SPU...");
     destruct_stack(&spu->spu_stack);
-    FREE_AND_NULL(spu->ram);
-    // FREE_AND_NULL(spu->vram);
+    free_and_null(spu->ram);
     LOG_INFO("SPU destructed");
 }
 
@@ -61,7 +61,7 @@ static arg_t* get_bin_arg(cmd_t* code, ssize_t* ip, struct Spu* spu)
     return res;
 }
 
-void print_ram(Spu* spu)
+static void print_ram(Spu* spu)
 {
     LOG_INFO("Printing RAM...");
     size_t position = 0;
@@ -69,7 +69,7 @@ void print_ram(Spu* spu)
     {
         for (size_t x = 0; x < VRAM_WIDTH; x++)
         {
-            size_t position = (VRAM_WIDTH + 1) * y + x;
+            position = (VRAM_WIDTH + 1) * y + x;
             switch (spu->ram[position - y + VRAM_OFFSET] / FLOAT_COEFFICIENT)
             {
                 case 0:
@@ -79,7 +79,7 @@ void print_ram(Spu* spu)
                 }
                 case 1:
                 {
-                    spu->vram[position] = '▓';
+                    spu->vram[position] = '0';
                     break;
                 }
                 default:
@@ -99,7 +99,6 @@ void execute_program(cmd_t* code_array, struct Spu* spu)
     assert(code_array);
     assert(spu);
 
-
     ssize_t ip = 0;
     while (ip > -1)
     {
@@ -110,7 +109,7 @@ void execute_program(cmd_t* code_array, struct Spu* spu)
         {
             #define DEF_CMD(NAME, ARG_MASK, ...) case OPERATIONS[NAME##_enum].id: ip += sizeof(cmd_t); __VA_ARGS__; break;
 
-            #include "../commands.h"
+            #include "../commands.inc"
             #undef DEF_CMD
 
             default: LOG_ERROR("There is not such command!"); return;

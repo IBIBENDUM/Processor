@@ -9,7 +9,7 @@
 #include "../Libs/logs.h"
 #include "../Libs/console_args.h"
 
-const char* file_out_name = "../Examples/output.asm";
+const char* file_out_name = "../Examples/Binaries/output.asm";
 
 int main(const int argc, char* const* argv)
 {
@@ -21,15 +21,9 @@ int main(const int argc, char* const* argv)
     if (!handle_cmd_args(argc, argv, "i:o:m:h", &values))
         return 1;
 
-    setlocale(LC_ALL, "");
-
     asm_error err = ASM_NO_ERR;
     err = file_to_asm(values.input_file_name, values.output_file_name);
-
-    if (err != ASM_NO_ERR)
-        LOG_ERROR("err = %s", asm_errors_strs[err]);
-    else
-        LOG_INFO("%s", asm_errors_strs[err]);
+    print_asm_error(err);
 
     return 0;
 }

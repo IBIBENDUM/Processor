@@ -7,15 +7,13 @@
 typedef int arg_t;
 typedef int cmd_t;
 
-const int FLOAT_COEFFICIENT = 100;
-const size_t VRAM_HEIGHT = 40;
-const size_t VRAM_WIDTH = 80;
-const size_t VRAM_OFFSET = 20;
+const int FLOAT_COEFFICIENT = 100; ///< Decimal precision
+const size_t VRAM_HEIGHT    = 40;  ///< Height of Virtual RAM frame
+const size_t VRAM_WIDTH     = 80;  ///< Width  of Virtual RAM frame
+const size_t VRAM_OFFSET    = 20;  ///< Number of cells not occupied by VRAM
+const size_t RAM_SIZE       = VRAM_HEIGHT * VRAM_WIDTH + VRAM_OFFSET;
 
-const size_t RAM_SIZE = VRAM_HEIGHT * VRAM_WIDTH + VRAM_OFFSET;
-
-const int MAX_ARGS_AMOUNT = 3;
-const int ARGS_MASK_OFFSET = 5;
+const int MAX_ARGS_AMOUNT   = 3;  ///< Maximum command arguments amount
 
 enum Op_code_masks
 {
@@ -39,15 +37,15 @@ enum Args_combinations
 
 const uint8_t args_combinations_arr[] =
 {
-    0b000, 0b001, 0b010,
-    0b011, 0b101, 0b110,
-    0b111
+    0b00000000, 0b00100000, 0b01000000,
+    0b01100000, 0b10100000, 0b11000000,
+    0b11100000
 };
 
 enum Cmds_ids
 {
     #define DEF_CMD(NAME, ...) NAME##_enum,
-    #include "commands.h"
+    #include "commands.inc"
     #undef DEF_CMD
 
     OPERATION_AMOUNT
@@ -62,7 +60,7 @@ struct Operation
 constexpr Operation OPERATIONS[OPERATION_AMOUNT] =
 {
     #define DEF_CMD(NAME, ...) {L ## #NAME,  NAME##_enum + 1},
-    #include "commands.h"
+    #include "commands.inc"
     #undef DEF_CMD
 };
 

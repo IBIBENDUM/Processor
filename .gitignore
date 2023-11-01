@@ -1,4 +1,5 @@
 /SPU/logs
 /Libs/sources
+/Documentation
 *.o
 *.exe
