@@ -25,7 +25,7 @@ void destruct_spu(struct Spu* spu)
 {
     LOG_INFO("Destructing SPU...");
     destruct_stack(&spu->spu_stack);
-    free_and_null(spu->ram);
+    free_and_null(spu->ram); // TODO: what about vram?
     LOG_INFO("SPU destructed");
 }
 
@@ -63,7 +63,7 @@ static arg_t* get_bin_arg(cmd_t* code, ssize_t* ip, struct Spu* spu)
 
 static void print_ram(Spu* spu)
 {
-    LOG_INFO("Printing RAM...");
+    LOG_INFO("Printing RAM..."); // TODO: vram?
     size_t position = 0;
     for (size_t y = 0; y < VRAM_HEIGHT; y++)
     {

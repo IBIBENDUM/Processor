@@ -13,7 +13,7 @@ DEF_CMD(pop, ___ | _R_ | M_I | MR_ | MRI,
     {
         arg_t value = 0;
         POP(value);
-        arg_t* reg_id = GET_ARG;
+        arg_t* reg_id = GET_ARG; // TODO: this could be done... on the other side of macro
         *reg_id = value;
         LOG_TRACE("reg_id = %d", *reg_id);
     })

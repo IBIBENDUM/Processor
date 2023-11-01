@@ -3,6 +3,10 @@
 
 #include "assembler_errors.h"
 
+
+// TODO: rename, saying file to asm is like saying "russian to text",
+//       because the thing that is stored in a file is already "asm"
+
 /**
  * @brief Parse command file to assembler bytecode
  *

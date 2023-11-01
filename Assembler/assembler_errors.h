@@ -1,6 +1,7 @@
 #ifndef ASSEMBLER_ERRORS_H
 #define ASSEMBLER_ERRORS_H
 
+// TODO: can you move this from header?
 // BAH: Look for this
 #define EMIT_CMD_ERROR_AND_RETURN_IT(CMD_ERROR_PTR, CMD_ERROR_ID)\
     do {\
@@ -18,9 +19,9 @@ enum cmd_error
 
 struct Command_error
 {
-    size_t line_idx;
-    const wchar_t* err_str_ptr;
-    int err_str_len;
+    size_t line_idx; // TODO: This header is not complete, you do not include it's dependencies (size_t in this case)
+    const wchar_t* err_str_ptr; // TODO: This is not err_str, more like erroneous source substring? 
+    int err_str_len; // TODO: This too can go well together, don't you think?
     cmd_error err_id;
 };
 
@@ -31,6 +32,11 @@ struct Compiler_errors
     size_t errors_amount;
 };
 
+// TODO: I see, you are trying to get names from your enum values
+//       But this seems like an overkill...
+
+// NOTE: I've given ... a few alternatives, you can choose one if
+//       you like it.
 #define DEF_ASM_ERR(NAME) NAME,
 enum asm_error
 {
@@ -45,10 +51,14 @@ const char * const asm_errors_strs[] =
 };
 #undef DEF_ASM_ERR
 
+// TODO: This documentation is confusing... Can you do better?
+//       Maybe explain your system in the beginning of this file.
+//
+//       So I, at least, know what commands' errors array is...
 /**
  * @brief Emit command error to commands' errors array
  *
- * @param cmd_err
+ * @param cmd_err // TODO: let's not forget what parameters this functions accepts...
  * @param error
  * @param source
  * @param len
