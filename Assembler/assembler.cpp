@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <cwchar>
 #include <assert.h>
+#include <malloc.h>
 
 #include "../Libs/textlib.h"
 #include "../Libs/colors.h"
@@ -13,11 +14,26 @@
 #include "assembler_errors.h"
 
 const size_t MAX_ERR_STR_LENGTH = 25; ///< Length of error string argument (e.g. label name)
+
+// NOTE: Sometimes you can immediately match
+//       binary representation of a command with
+//       binary representation of underlying struct
+//       that represents it, like so (you might want to look into bitfields):
+
+// struct Command_ {
+//     arg_t cmd_id : 5;
+
+//     union {
+//         arg_t reg_id : 3;
+//         arg_t imm : 16;
+//     }
+// };  
+
 struct Command
 {
     arg_t cmd_id;
     arg_t reg_id;
-    arg_t imm;
+    arg_t imm; // TODO: naming, imm_value?
     uint8_t args_bitmask;
 
     bool has_ram;
@@ -36,8 +52,10 @@ struct Label
 const size_t LABELS_MAX_AMOUNT = 50;
 struct Labels
 {
+    // TODO: Don't you have a generic "array"?
     Label labels_arr[LABELS_MAX_AMOUNT] = {};
     size_t amount = 0;
+
     size_t final_size = 0;
 };
 
@@ -56,12 +74,18 @@ static bool check_args_correctness(const int cmd_code, const Command* cmd)
     return false;
 }
 
+// TODO: Move macro closer to usage
+// Also, maybe this can be a function if you make a struct out of
+// code array and position, which seems like a logical solution.
+
+// TODO: indentation?
 #define EMIT_BYTECODE(CODE, TYPE)                       \
     do {                                                \
     *(TYPE*)((uint8_t*) code_array + *position) = CODE; \
     *position += sizeof(TYPE);                          \
     } while (0)
 
+// TODO: emit_command?
 static cmd_error emit_code(const Command* const cmd, Command_error* const cmd_err, void* code_array, size_t* const position)
 {
     assert(code_array);
@@ -120,6 +144,11 @@ static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_na
 
 static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, wchar_t* arg_start_ptr)
 {
+    // TODO: can you make a structured parser out of this thing?
+    //       Because right now this function feels like a frankenstein who
+    //       has been reassembled multiple times...
+    //       Even if it works, it doesn't seem like something maintainable.
+
     assert(arg_start_ptr);
     assert(cmd);
     assert(labels);
@@ -180,6 +209,7 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
     return CMD_NO_ERR;
 }
 
+// TODO: what is garbage args? Add an explanation
 #define RETURN_ERR_IF_GARBAGE_ARGS(START_PTR)                         \
     do {                                                              \
         size_t GARBAGE_WORD_LEN = 0;                                  \
@@ -190,6 +220,8 @@ static cmd_error get_arg(Command* cmd, Labels* labels, Command_error* cmd_err, w
 
 static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int args_bitmask, wchar_t* op_ptr)
 {
+    // TODO: the same thing I wrote for previous parser...
+
     assert(op_ptr);
     assert(cmd);
     assert(labels);
@@ -198,6 +230,7 @@ static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err
     if (args_bitmask == 1)
         return CMD_NO_ERR;
 
+    // TODO: WHAT IS CSCSPN??
     ssize_t left_br_pos = cscspn(op_ptr, L"[");
     ssize_t right_br_pos = cscspn(op_ptr, L"]");
 
@@ -227,7 +260,8 @@ static cmd_error parse_args(Command* cmd, Labels* labels, Command_error* cmd_err
         op_ptr[right_br_pos] = L']';
 
         // Check for garbage args inside brackets
-        RETURN_ERR_IF_GARBAGE_ARGS(NULL);
+        RETURN_ERR_IF_GARBAGE_ARGS(NULL); // TODO: What is NULL doing here?
+                                                 //       It's not obvious that this has state at all.
 
         // Check for garbage args outside brackets
         RETURN_ERR_IF_GARBAGE_ARGS(op_ptr + right_br_pos + 1);
@@ -282,6 +316,8 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
     }
 
     // BAH: Or loop?
+    // TODO: Overcomplex macro, probably can be extracted partially into function
+    // TODO: Also, "\"... align them
     #define STRLEN(S) (sizeof(S)/sizeof(S[0]) - 1)
     #define DEF_CMD(NAME, ARGS_BITMASK, ...)\
         do {\
@@ -297,16 +333,18 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
                 return parse_args_ret_val;\
             }\
         } while(0);
+    //            ^ TODO: Do while only makes sense if you don't put semicolon in the end 
 
     #include "../commands.inc"
 
     #undef DEF_CMD
     #undef STRLEN
+    // TODO: can you move #undef's to commands.inc?
 
     if (parse_label(line_ptr, op_name, op_name_len))
     {
         cmd_error err = emit_label(op_name, op_name_len, position, labels);
-        if (err != CMD_NO_ERR)
+        if (err != CMD_NO_ERR) // TODO: you made a lot of macros for such cases but not this one, why? In this case it can even be a function
         {
             emit_cmd_error(cmd_err, err, move_to_non_space_sym(line_ptr->start), line_ptr->len - 1);
         }
@@ -329,6 +367,8 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
     asm_error asm_err = ASM_NO_ERR;
 
     *position = 0;
+
+    // TODO: *errors = {}; ?
     memset(errors, 0, sizeof(Compiler_errors));
 
     for (size_t i = 0; i < file->line_amount; i++)
@@ -349,7 +389,7 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
                 err = emit_code(&cmd, &err_msg, code_array, position);
             }
         }
-        if (err != CMD_NO_ERR)
+        if (err != CMD_NO_ERR) // TODO: seems like a pattern I've already seen
         {
             emit_asm_error(errors, &err_msg, err);
             asm_err = ASM_PARSE_ARGS_ERR;

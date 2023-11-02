@@ -35,6 +35,9 @@ enum Args_combinations
     ARGS_COMBINATIONS_AMOUNT
 };
 
+// TODO: it is not obvious what this does at first glance.
+//       Also, I understood why you need it, but it still
+//       seems inelegant... I cannot grade inelegance though... Or can I?
 const uint8_t args_combinations_arr[] =
 {
     0b00000000, 0b00100000, 0b01000000,
