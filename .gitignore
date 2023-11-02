@@ -1,3 +1,5 @@
-/SPU/logs
+.vscode
+SPU/logs
 /Documentation
 *.exe
+*.o
