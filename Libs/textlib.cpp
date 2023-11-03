@@ -266,15 +266,6 @@ wchar_t* move_to_non_space_sym(wchar_t* str)
     return str;
 }
 
-size_t cscspn (wchar_t* source, const wchar_t* ref)
-{
-    ssize_t pos = wcscspn(source, ref);
-    if (pos == wcslen(source))
-        pos = 0;
-
-    return pos;
-}
-
 wchar_t* get_word(wchar_t* string, size_t* word_len_ptr)
 {
     static wchar_t* backup_string;

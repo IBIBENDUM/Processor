@@ -180,17 +180,22 @@ static cmd_error emit_label_arg(Command* cmd, Labels* labels, const wchar_t* arg
 
 
 // BAH: mb make struct for cmd, labels, cmd_err?
-static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err, wchar_t* arg_start_ptr)
+static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err, const wchar_t* arg_start_ptr)
 {
     assert(cmd);
     assert(labels);
     assert(cmd_err);
     assert(arg_start_ptr);
 
+    // Replace ']' with '\0' and back so that the search for imm and label
+    // takes place without taking into account the bracket
+    wchar_t* right_br_ptr = wcschr(arg_start_ptr, L']');
+    if (right_br_ptr)
+        *right_br_ptr = L'\0';
+
     size_t arg_len = 0;
-    wchar_t* arg_ptr = get_word(arg_start_ptr, &arg_len);
-    LOG_TRACE("arg_ptr = %hs", arg_ptr);
-    LOG_TRACE("arg_len = %lld", arg_len);
+    wchar_t* arg_ptr = get_word((wchar_t*)arg_start_ptr, &arg_len);
+    LOG_TRACE("arg_ptr = %.*ls", arg_len, arg_ptr);
 
     if (arg_len == 0)
         EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, TOO_FEW_ARGS_ERR);
@@ -210,20 +215,27 @@ static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err,
         if (emit_label_arg(cmd, labels, arg_ptr) == CMD_NO_ERR)
             return CMD_NO_ERR;
     }
+    *right_br_ptr = L']';
+
     return CMD_WRONG_ARG_ERR;
 }
 
-#define RETURN_ERR_IF_GARBAGE_ARGS(START_PTR)                         \
-    do {                                                              \
-        size_t GARBAGE_WORD_LEN = 0;                                  \
-        get_word(START_PTR, &GARBAGE_WORD_LEN);                       \
-        if (GARBAGE_WORD_LEN)                                         \
-            EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS); \
-    } while (0)
-
-static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int possible_args_bitmask, wchar_t* op_ptr)
+static cmd_error emit_ram_arg(Command* cmd, const wchar_t* arg_ptr, wchar_t**  left_br_ptr, wchar_t** right_br_ptr)
 {
-    assert(op_ptr);
+    *left_br_ptr = wcschr(arg_ptr, L'[');
+    *right_br_ptr = wcschr(arg_ptr, L']');
+
+    if (*left_br_ptr && *right_br_ptr && (*right_br_ptr - *left_br_ptr > 0))
+    {
+        LOG_INFO("cmd has RAM");
+        cmd->has_ram = true;
+    }
+    return CMD_NO_ERR;
+}
+
+static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int possible_args_bitmask, wchar_t* arg_ptr)
+{
+    assert(arg_ptr);
     assert(cmd);
     assert(labels);
     assert(cmd_err);
@@ -231,48 +243,31 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     if (possible_args_bitmask == ___)
         return CMD_NO_ERR;
 
-    ssize_t left_br_pos = cscspn(op_ptr, L"[");
-    ssize_t right_br_pos = cscspn(op_ptr, L"]");
-
-    // BAH: Make macro or something?
-    if (left_br_pos > 0 && right_br_pos > 0)
-    {
-        cmd->has_ram = true;
-        op_ptr[left_br_pos] = L'\0';
-        op_ptr[right_br_pos] = L'\0';
-    }
+    wchar_t* left_br_ptr = NULL;
+    wchar_t* right_br_ptr = NULL;
+    emit_ram_arg(cmd, arg_ptr, &left_br_ptr, &right_br_ptr);
 
     cmd_error err = CMD_NO_ERR;
-    err = parse_arg(cmd, labels, cmd_err, op_ptr + left_br_pos + 1);
+    err = parse_arg(cmd, labels, cmd_err, left_br_ptr + 1);
     if (err != CMD_NO_ERR)
         return err;
 
     // Find + operator
-    size_t operator_pos = cscspn(op_ptr + left_br_pos + 1, L"+");
+    const wchar_t* operator_ptr = wcschr(left_br_ptr + 1, L'+');
 
     // Get second argument
-    if (operator_pos)
-        err = parse_arg(cmd, labels, cmd_err, op_ptr + left_br_pos + operator_pos + 2);
+    if (operator_ptr)
+        err = parse_arg(cmd, labels, cmd_err, operator_ptr + 1);
 
-    if (cmd->has_ram)
-    {
-        op_ptr[left_br_pos] = L'[';
-        op_ptr[right_br_pos] = L']';
+    // If there is "exta" args emit error and return from function
+    // The term extra arguments refers to arguments that are not expected
+    size_t extra_word_len = 0;
+    get_word(NULL, &extra_word_len);
+    if (extra_word_len)
+        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS);
 
-        // Check for garbage args inside brackets
-        RETURN_ERR_IF_GARBAGE_ARGS(NULL);
-
-        // Check for garbage args outside brackets
-        RETURN_ERR_IF_GARBAGE_ARGS(op_ptr + right_br_pos + 1);
-    }
-    else
-    {
-        // Check for garbage if no RAM
-        RETURN_ERR_IF_GARBAGE_ARGS(NULL);
-    }
     return err;
 }
-#undef RETURN_ERR_IF_GARBAGE_ARGS
 
 static bool parse_label(const line* line_ptr, wchar_t* op_name, const size_t op_name_len)
 {
@@ -291,12 +286,25 @@ static bool parse_label(const line* line_ptr, wchar_t* op_name, const size_t op_
             else if (*move_to_non_space_sym(op_name + op_name_len) == L':')
                 is_label = true;
 
-            // Check for 'label: garbage' case
+            // Check for 'label: extra' case
             if (*move_to_non_space_sym(line_ptr->start + colon_pos + 1) != L'\0')
                 is_label = false;
         }
     }
     return is_label;
+}
+
+static bool get_operation(Command* cmd, line* op_name, const Operation* op)
+{
+    if (op_name->len == op->name_len && wcsncmp(op_name->start, op->name, op->name_len) == 0)
+    {
+        *cmd = (Command){
+                    .cmd_id                = op->id,
+                    .possible_args_bitmask = op->possible_args_bitmask
+                    };
+        return true;
+    }
+    return false;
 }
 
 static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_error* cmd_err, const line* line_ptr, const size_t position)
@@ -306,40 +314,38 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
     assert(labels);
 
     size_t op_name_len = 0;
-    wchar_t* op_name = get_word(line_ptr->start, &op_name_len);
-    if (op_name_len == 0)
+    wchar_t* op_name_str = get_word(line_ptr->start, &op_name_len);
+    line op_name =  {
+                    .start = op_name_str,
+                    .len = op_name_len
+                    };
+
+    if (op_name.len == 0)
     {
         LOG_TRACE("Empty line!");
         return CMD_NO_ERR;
     }
 
-    LOG_DEBUG("op_name = <%.*ls>", op_name_len, op_name);
+    LOG_DEBUG("op_name_str = <%.*ls>", op_name.len, op_name.start);
 
-    // BAH: Or loop?
-    #define STRLEN(S) (sizeof(S)/sizeof(S[0]) - 1)
-    #define DEF_CMD(NAME, POSSIBLE_ARGS_BITMASK, ...)                                                                        \
-        do {                                                                                                                 \
-            if (op_name_len == STRLEN(L ## #NAME) && wcsncmp(op_name, L ## #NAME, STRLEN(L ## #NAME)) == 0)                  \
-            {                                                                                                                \
-                const int id = OPERATIONS[NAME ## _enum].id;                                                                 \
-                cmd->cmd_id = id;                                                                                            \
-                cmd->possible_args_bitmask = POSSIBLE_ARGS_BITMASK;                                                          \
-                cmd_error parse_args_ret_val = get_args(cmd, labels, cmd_err, POSSIBLE_ARGS_BITMASK, op_name + op_name_len); \
-                LOG_TRACE("get_args = %d", parse_args_ret_val);                                                              \
-                LOG_TRACE("code: ram %d id %d reg %d imm %d", cmd->has_ram, cmd->cmd_id, cmd->reg_id, cmd->imm_value);       \
-                                                                                                                             \
-                return parse_args_ret_val;                                                                                   \
-            }                                                                                                                \
-        } while(0);
-
+    #define DEF_CMD(NAME, POSSIBLE_ARGS_BITMASK, ...)                                                                  \
+        if (get_operation(cmd, &op_name, &OPERATIONS[NAME ## _enum]))                                                  \
+        {                                                                                                              \
+                cmd_error parse_args_ret_val = get_args(cmd, labels, cmd_err, POSSIBLE_ARGS_BITMASK,                   \
+                                                        op_name.start + op_name.len);                                  \
+                LOG_TRACE("code: ram %d id %d reg %d imm %d", cmd->has_ram, cmd->cmd_id, cmd->reg_id, cmd->imm_value); \
+                LOG_TRACE("get_args = %d", parse_args_ret_val);                                                        \
+                                                                                                                       \
+                return parse_args_ret_val;                                                                             \
+                                                                                                                       \
+        }
     #include "../commands.inc"
 
     #undef DEF_CMD
-    #undef STRLEN
 
-    if (parse_label(line_ptr, op_name, op_name_len))
+    if (parse_label(line_ptr, op_name_str, op_name_len))
     {
-        cmd_error err = emit_label(op_name, op_name_len, position, labels);
+        cmd_error err = emit_label(op_name_str, op_name_len, position, labels);
         if (err != CMD_NO_ERR)
         {
             emit_cmd_error(cmd_err, err, move_to_non_space_sym(line_ptr->start), line_ptr->len - 1);
@@ -371,7 +377,6 @@ static asm_error parse_file_to_commands(File* file, size_t* position, int* code_
         LOG_DEBUG("line = %d", i + 1);
         line* line_ptr = file->lines_ptrs + i;
         replace_with_zero(line_ptr, L';'); // Remove comments
-
         Command cmd = {};
         Command_error err_msg = { .line_idx = i + 1 };
         cmd_error err = CMD_NO_ERR;
@@ -432,7 +437,6 @@ static asm_error text_to_asm(File* input_file, const char* output_file_name)
     assert(output_file_name);
 
     LOG_INFO("Prepare text for converting...");
-    printf("buffer = %ls\n", input_file->buffer);
     tokenize_lines(input_file);
     const size_t line_amount = input_file->line_amount;
 
@@ -447,6 +451,7 @@ static asm_error text_to_asm(File* input_file, const char* output_file_name)
     Compiler_errors errors = {};
     size_t size = 0;
 
+    LOG_TRACE("asdasdo");
     parse_file_to_commands(input_file, &size, code_array, &labels, &errors);
     LOG_DEBUG("labels.labels_arr[0].cmd_pos = %d", labels.labels_arr[0].cmd_pos);
     LOG_DEBUG("labels.labels_arr[0].name = %hs", labels.labels_arr[0].name);

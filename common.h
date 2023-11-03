@@ -66,13 +66,20 @@ enum Cmds_ids
 struct Operation
 {
     const wchar_t* const name;
+    const size_t name_len;
     const short id;
+    const uint8_t possible_args_bitmask;
 };
 
 constexpr Operation OPERATIONS[OPERATION_AMOUNT] =
 {
-    #define DEF_CMD(NAME, ...) {L ## #NAME,  NAME##_enum + 1},
+    #define STRLEN(S) (sizeof(S)/sizeof(S[0]) - 1)
+    #define DEF_CMD(NAME,  POSSIBLE_ARGS_BITMASK, ...)\
+    {L ## #NAME, STRLEN(L ## #NAME), NAME##_enum + 1, POSSIBLE_ARGS_BITMASK},
+
     #include "commands.inc"
+
+    #undef STRLEN(S)
     #undef DEF_CMD
 };
 

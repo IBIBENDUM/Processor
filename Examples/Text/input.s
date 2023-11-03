@@ -1,4 +1,4 @@
-push 3.12;
+push [3.12]
 out
 HLT
 
