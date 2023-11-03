@@ -1,11 +1,33 @@
+;       RAM DOCS
+; ╔═══════════════════╗
+; ║ [0] - FIRST  ROOT ║
+; ║	[1] - SECOND ROOT ║
+; ╚═══════════════════╝
+
+
 call main
 HLT
 
 main:
-    call get_coeffs
-    call solve_qe
+    ; call get_coeffs
+    ; call solve_qe
+    call unit_test_1
 
     ret
+
+unit_test_1:
+    push 1
+    pop rax
+
+    push 0
+    pop rbx
+
+    push 0
+    pop rcx
+
+    call solve_qe
+    ret
+
 
 get_coeffs:
     in
@@ -71,14 +93,15 @@ calculate_discr:
 
     ret
 
-;ax + b = 0
-; check for two 0 0
+;ax^2 + bx = 0
 solve_incomplete_qe:
-    pop rcx
-
     push 0
     out
-    pop [0]
+    pop  [0]
+
+    push rbx
+    push 0
+    je incomplete_qe_zero_b
 
     push -1
     push rbx
@@ -89,6 +112,10 @@ solve_incomplete_qe:
     pop [0]
 
     ret
+
+    incomplete_qe_zero_b:
+        ret
+
 
 two_roots:
     call d_sqrt_half

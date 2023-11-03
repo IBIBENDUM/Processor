@@ -38,7 +38,7 @@ struct Spu
 {
     stack spu_stack;
     arg_t* ram;
-    char* vram;
+    wchar_t * vram;
     Register regs[REGS_AMOUNT]
     {
         #define DEF_REG(NAME) {L ## #NAME, NAME, 0},

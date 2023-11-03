@@ -12,6 +12,7 @@
 
 void emit_cmd_error(Command_error* cmd_err, const cmd_error error, const line* err_substring)
 {
+    LOG_TRACE("emit_cmd_error");
     *cmd_err = (Command_error)
               {
                   .line_idx           = cmd_err->line_idx,
@@ -52,14 +53,14 @@ static void print_cmd_error(Command_error* cmd_err)
 {
     assert(cmd_err);
 
-    #define DEF_CMD_ERR(NAME, FORMAT, ...)                                   \
-    case NAME:                                                               \
-    {                                                                        \
-        print_error_position(cmd_err->line_idx);                             \
-        fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "error: "));             \
+    #define DEF_CMD_ERR(NAME, FORMAT, ...)                                                 \
+    case NAME:                                                                             \
+    {                                                                                      \
+        print_error_position(cmd_err->line_idx);                                           \
+        fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "error: "));                           \
         fprintf(stderr, FORMAT, cmd_err->err_substring.len, cmd_err->err_substring.start); \
-        fprintf(stderr, "\n");                                               \
-        break;                                                               \
+        fprintf(stderr, "\n");                                                             \
+        break;                                                                             \
     }
 
     switch (cmd_err->err_id)

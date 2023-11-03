@@ -19,7 +19,7 @@ main:
 calc_factorial:
     push rax
     push 1
-    jbe ret_jmp
+    jbe recursion_base
 
     push rax
 
@@ -36,7 +36,7 @@ calc_factorial:
     ret
 
     ; if (rax <= 1) return 1
-    ret_jmp:
+    recursion_base:
     ; remove rax value and replace with 1
         push 1
         pop rax

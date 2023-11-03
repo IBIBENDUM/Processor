@@ -2,11 +2,18 @@
 #include <stdlib.h>
 #include <math.h>
 #include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <locale.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <assert.h>
 
 #include "spu.h"
 #include "../common.h"
 #define STK_DEBUG
 #include "../Libs/stack.h"
+#include "../Libs/stack_logs.h"
 #include "../Libs/logs.h"
 #include "../Libs/utils.h"
 
@@ -17,7 +24,7 @@ void construct_spu(struct Spu* spu)
     LOG_INFO("Initializing SPU...");
     init_stack(spu->spu_stack);
     spu->ram  = (arg_t*) calloc(RAM_SIZE, sizeof(spu->ram[0]));
-    spu->vram = (char*) calloc(RAM_SIZE, sizeof(spu->vram[0]));
+    spu->vram = (wchar_t*) calloc(RAM_SIZE, sizeof(spu->vram[0]));
     LOG_INFO("SPU initialized");
 }
 
@@ -26,6 +33,7 @@ void destruct_spu(struct Spu* spu)
     LOG_INFO("Destructing SPU...");
     destruct_stack(&spu->spu_stack);
     free_and_null(spu->ram);
+    free_and_null(spu->vram);
     LOG_INFO("SPU destructed");
 }
 
@@ -74,14 +82,21 @@ static void print_ram(Spu* spu)
             {
                 case 0:
                 {
-                    spu->vram[position] = '.';
+                    spu->vram[position] = L'⡀';
                     break;
                 }
+                // BAH: Make something interesting
                 case 1:
                 {
-                    spu->vram[position] = '0';
+                    spu->vram[position] = L'⣿';
                     break;
                 }
+                case 2:
+                {
+                    spu->vram[position] = L'⣾';
+                    break;
+                }
+
                 default:
                 {
                     spu->vram[position] = '?';
@@ -91,8 +106,12 @@ static void print_ram(Spu* spu)
         }
         spu->vram[position] = '\n';
     }
-    fwrite(spu->vram, position, sizeof(char), stderr);
+    // setlocale(LC_ALL, "");
+    setmode(fileno(stderr), 0x00040000);
+
+    fwrite(spu->vram, position, sizeof(wchar_t), stderr);
 }
+
 
 void execute_program(cmd_t* code_array, struct Spu* spu)
 {
@@ -104,7 +123,14 @@ void execute_program(cmd_t* code_array, struct Spu* spu)
     {
         LOG_TRACE("ip = %lld", ip);
         cmd_t cmd = *((uint8_t*) code_array + ip);
-        dump_stack(stderr, &spu->spu_stack, 0);
+        LOG_DEBUG("spu->spu_stack.size = %d", spu->spu_stack.size);
+        dump_stack(stderr, spu->spu_stack, 0);
+        LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+        for (int i = 0; i < spu->spu_stack.size; i++)
+        {
+            LOG_WARN("[%d] = %d", i, spu->spu_stack.data[i]);
+        }
+        LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
         switch (cmd & ID_MASK)
         {
             #define DEF_CMD(NAME, ARG_MASK, ...) case OPERATIONS[NAME##_enum].id: ip += sizeof(cmd_t); __VA_ARGS__; break;

@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <direct.h>
 #include <assert.h>
 #include <time.h>
 
@@ -133,21 +134,25 @@ bool open_log_file()
 {
     if (!log_file_name)
     {
+        STK_DEBUG_MSG("Incorrect logs file name");
         return true;
     }
-    // if (_mkdir(logs_folder_name) == ENOENT)
-    // {
-    //     return true;
-    // }
+    if (_mkdir(logs_folder_name) == ENOENT)
+    {
+        STK_DEBUG_MSG("Path not found");
+        return true;
+    }
     char full_file_name[FILE_NAME_SIZE] = {};
     if (get_log_file_name_with_folder(full_file_name))
     {
+        STK_DEBUG_MSG("Can't get full file name");
         return true;
     }
 
     log_file_ptr = fopen(full_file_name, "a");
     if (!log_file_ptr)
     {
+        STK_DEBUG_MSG("[%s] %s: Error at file open\n", __FILE__, __PRETTY_FUNCTION__);
         return true;
     }
     fprintf(log_file_ptr, "<!DOCTYPE html>\n");
@@ -186,6 +191,7 @@ bool close_log_file()
 
     if (fclose(log_file_ptr))
     {
+        STK_DEBUG_MSG("[%s] %s: Error at file closing\n", __FILE__, __PRETTY_FUNCTION__);
         return true;
     }
     log_file_ptr = NULL;
