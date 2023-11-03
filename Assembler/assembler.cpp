@@ -29,8 +29,8 @@ const ssize_t LABEL_POISON_VALUE = -1;
 const size_t MAX_LABEL_NAME_LENGTH = 50;
 struct Label
 {
-    arg_t cmd_pos = 0;
     wchar_t name[MAX_LABEL_NAME_LENGTH] = {};
+    arg_t cmd_pos = 0;
 };
 
 const size_t LABELS_MAX_AMOUNT = 50;
@@ -68,16 +68,21 @@ static bool check_args_correctness(const Command* cmd, const int op_code)
     return false;
 }
 
+
+// BAH: Make struct for code_array and position and remove macro
+// Emit command bytecode to code array
 #define EMIT_BYTECODE(CODE, TYPE)                           \
     do {                                                    \
         *(TYPE*)((uint8_t*) code_array + *position) = CODE; \
         *position += sizeof(TYPE);                          \
     } while (0)
 
+// Emit command error code and return error code
 #define EMIT_CMD_ERROR_AND_RETURN_IT(CMD_ERROR_PTR, CMD_ERROR_ID)              \
     do {                                                                       \
-        const wchar_t* op_name = OPERATIONS[cmd->cmd_id - 1].name;             \
-        emit_cmd_error(CMD_ERROR_PTR, CMD_ERROR_ID, op_name, wcslen(op_name)); \
+        wchar_t* op_name = (wchar_t*) OPERATIONS[cmd->cmd_id - 1].name;\
+        line err_substring = {op_name, wcslen(op_name)};           \
+        emit_cmd_error(CMD_ERROR_PTR, CMD_ERROR_ID, &err_substring); \
         return CMD_ERROR_ID;                                                   \
     } while (0)
 
@@ -105,19 +110,19 @@ static cmd_error emit_command(const Command* const cmd, Command_error* const cmd
 #undef EMIT_BYTE_CODE
 
 // TODO: line*
-static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_name_len, const size_t position, Labels* labels)
+static cmd_error emit_label(const line* label_name, const size_t position, Labels* labels)
 {
-    assert(label_name_ptr);
+    assert(label_name);
     assert(labels);
 
-    if (label_name_len > MAX_LABEL_NAME_LENGTH - 1)
+    if (label_name->len > MAX_LABEL_NAME_LENGTH - 1)
     {
         return CMD_TOO_LONG_LABEL_ERR;
     }
 
     for (size_t label_id = 0; label_id < labels->amount; label_id++)
     {
-        if (wcsncmp(labels->labels_arr[label_id].name, label_name_ptr, label_name_len) == 0)
+        if (wcsncmp(labels->labels_arr[label_id].name, label_name->start, label_name->len) == 0)
         {
             if (labels->labels_arr[label_id].cmd_pos != (arg_t) position)
                 return CMD_REPEATED_LABEL_ERR;
@@ -127,9 +132,9 @@ static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_na
     // Check for first compilation
     if (labels->final_size == 0)
     {
-        LOG_ERROR("label_name = %.*ls", label_name_len, label_name_ptr);
+        LOG_ERROR("label_name = %.*ls", label_name->len, label_name->start);
 
-        wcsncpy(labels->labels_arr[labels->amount].name, label_name_ptr, label_name_len);
+        wcsncpy(labels->labels_arr[labels->amount].name, label_name->start, label_name->len);
         labels->labels_arr[labels->amount].cmd_pos = (int) position;
 
         labels->amount++;
@@ -194,13 +199,6 @@ static cmd_error emit_label_arg(Command* cmd, Labels* labels, const wchar_t* arg
     }
     return CMD_WRONG_ARG_ERR;
 }
-
-#define EMIT_CMD_ERROR_AND_RETURN_IT(CMD_ERROR_PTR, CMD_ERROR_ID)\
-    do {\
-        const wchar_t* op_name = OPERATIONS[cmd->cmd_id - 1].name;\
-        emit_cmd_error(CMD_ERROR_PTR, CMD_ERROR_ID, op_name, wcslen(op_name));\
-        return CMD_ERROR_ID;\
-    } while (0)
 
 static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err, wchar_t* arg_start_ptr)
 {
@@ -274,6 +272,7 @@ static bool emit_ram_arg(Command* cmd, wchar_t* arg_ptr, wchar_t**  left_br_ptr,
     return false;
 }
 
+// BAH: add struct for cmd, labels, cmd_err
 static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int possible_args_bitmask, wchar_t* arg_ptr)
 {
     assert(arg_ptr);
@@ -308,6 +307,9 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     // If there is "exta" args emit error and return from function
     // The term extra arguments refers to arguments that are not expected
     size_t extra_word_len = 0;
+
+    // Because get_word() is similar to strtok(),
+    // you can pass NULL and get a pointer to the next word
     get_word(NULL, &extra_word_len);
     if (extra_word_len)
         EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS);
@@ -315,24 +317,24 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     return err;
 }
 
-static bool parse_label(const line* line_ptr, wchar_t* op_name, size_t* op_name_len)
+static bool parse_label(line* op_name, const line* line_ptr)
 {
     bool is_label = false;
-    if (*op_name_len > 1)
+    if (op_name->len > 1)
     {
-        // Check for colon existence in line
+        // Check for colon (':') existence in line
         size_t colon_pos = wcscspn(line_ptr->start, L":");
         if (colon_pos != line_ptr->len)
         {
             // Because op_name contains first word we can check only two cases
             // Check for 'label:' case
-            if (op_name[*op_name_len-1] == L':')
+            if (op_name->start[op_name->len-1] == L':')
             {
-                *op_name_len = *op_name_len - 1;
+                op_name->len--;
                 is_label = true;
             }
             // Check for 'label :' case
-            else if (*move_to_non_space_sym(op_name + *op_name_len) == L':')
+            else if (*move_to_non_space_sym(op_name->start + op_name->len) == L':')
             {
                 is_label = true;
             }
@@ -392,17 +394,17 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
     #include "../commands.inc"
     // There is undef inside "command.inc"
 
-
-    if (parse_label(line_ptr, op_name.start, &op_name.len))
+    const line err_substring = (line){move_to_non_space_sym(line_ptr->start), line_ptr->len - 1};
+    if (parse_label(&op_name, line_ptr))
     {
-        cmd_error err = emit_label(op_name.start, op_name.len, position, labels);
+        cmd_error err = emit_label(&op_name, position, labels);
         if (err != CMD_NO_ERR)
-            emit_cmd_error(cmd_err, err, move_to_non_space_sym(line_ptr->start), line_ptr->len - 1);
+            emit_cmd_error(cmd_err, err, &err_substring);
 
         LOG_TRACE("LABEL LINE");
         return err;
     }
-    emit_cmd_error(cmd_err, CMD_WRONG_NAME_ERR, move_to_non_space_sym(line_ptr->start), line_ptr->len - 1);
+    emit_cmd_error(cmd_err, CMD_WRONG_NAME_ERR, &err_substring);
     return CMD_WRONG_NAME_ERR;
 }
 

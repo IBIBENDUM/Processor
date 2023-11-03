@@ -10,15 +10,13 @@
 #include "assembler.h"
 #include "assembler_errors.h"
 
-void emit_cmd_error(Command_error* cmd_err, const cmd_error error, const wchar_t* source, const size_t len)
+void emit_cmd_error(Command_error* cmd_err, const cmd_error error, const line* err_substring)
 {
-    const size_t line = cmd_err->line_idx;
     *cmd_err = (Command_error)
               {
-                  .line_idx    = line,
-                  .err_str_ptr = source,
-                  .err_str_len = (int) len,
-                  .err_id      = error
+                  .line_idx           = cmd_err->line_idx,
+                  .err_substring      = *err_substring,
+                  .err_id             = error
               };
 }
 
@@ -30,8 +28,7 @@ void emit_asm_error(Compiler_errors* compiler_errors, const Command_error* const
         compiler_errors->errors[err_idx] =  (Command_error)
                                             {
                                                 .line_idx    = err->line_idx,
-                                                .err_str_ptr = err->err_str_ptr,
-                                                .err_str_len = err->err_str_len,
+                                                .err_substring = err->err_substring,
                                                 .err_id      = error_id
                                             };
         compiler_errors->errors_amount++;
@@ -60,7 +57,7 @@ static void print_cmd_error(Command_error* cmd_err)
     {                                                                        \
         print_error_position(cmd_err->line_idx);                             \
         fprintf(stderr, PAINT_TEXT(COLOR_LIGHT_RED, "error: "));             \
-        fprintf(stderr, FORMAT, cmd_err->err_str_len, cmd_err->err_str_ptr); \
+        fprintf(stderr, FORMAT, cmd_err->err_substring.len, cmd_err->err_substring.start); \
         fprintf(stderr, "\n");                                               \
         break;                                                               \
     }

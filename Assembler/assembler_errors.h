@@ -15,9 +15,7 @@ enum cmd_error
 struct Command_error
 {
     size_t line_idx;
-    // line err_substring;
-    const wchar_t* err_str_ptr;
-    int err_str_len;
+    line err_substring;
     cmd_error err_id;
 };
 
@@ -42,7 +40,7 @@ const char * const asm_errors_strs[] =
 };
 #undef DEF_ASM_ERR
 
-void emit_cmd_error(Command_error* cmd_err, cmd_error error, const wchar_t* source, size_t len);
+void emit_cmd_error(Command_error* cmd_err, cmd_error error, const line* err_substring);
 
 void emit_asm_error(Compiler_errors* compiler_errors, const Command_error* const err, cmd_error error_id);
 
