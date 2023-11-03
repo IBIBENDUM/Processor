@@ -72,6 +72,7 @@ calculate_discr:
     ret
 
 ;ax + b = 0
+; check for two 0 0
 solve_incomplete_qe:
     pop rcx
 

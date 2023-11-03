@@ -23,7 +23,7 @@ int main(const int argc, char* const* argv)
 
     set_log_level(LOG_LVL_TRACE);
     asm_error err = ASM_NO_ERR;
-    err = file_to_asm(values.input_file_name, values.output_file_name);
+    err = compile_file(values.input_file_name, values.output_file_name);
     print_asm_error(err);
 
     return 0;

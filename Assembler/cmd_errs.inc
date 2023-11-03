@@ -7,3 +7,5 @@ DEF_CMD_ERR(CMD_TOO_LONG_LABEL_ERR, "too long label name (edit constant in 'asse
 DEF_CMD_ERR(CMD_TOO_MANY_LABEL_ERR, "too much labels (edit constant in 'assembler.h')%.*hs")
 DEF_CMD_ERR(CMD_TOO_MANY_ARGS, "too many arguments to command '%.*hs'")
 DEF_CMD_ERR(TOO_FEW_ARGS_ERR, "too few arguments to command '%.*hs'")
+
+#undef DEF_CMD_ERR
