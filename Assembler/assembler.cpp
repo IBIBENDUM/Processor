@@ -299,7 +299,7 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
         return err;
 
     // Find + operator
-    const wchar_t* operator_ptr = wcschr(left_br_ptr + 1, L'+');
+    wchar_t* operator_ptr = wcschr(left_br_ptr + 1, L'+');
 
     // Get second argument
     if (operator_ptr)
