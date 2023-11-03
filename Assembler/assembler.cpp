@@ -260,7 +260,7 @@ static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err,
     return CMD_WRONG_ARG_ERR;
 }
 
-static bool emit_ram_arg(Command* cmd, const wchar_t* arg_ptr, wchar_t**  left_br_ptr, wchar_t** right_br_ptr)
+static bool emit_ram_arg(Command* cmd, wchar_t* arg_ptr, wchar_t**  left_br_ptr, wchar_t** right_br_ptr)
 {
     *left_br_ptr = wcschr(arg_ptr, L'[');
     *right_br_ptr = wcschr(arg_ptr, L']');
