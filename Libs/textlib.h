@@ -2,6 +2,8 @@
 #define TEXTLIB_H
 
 #include <stdio.h>
+#include <wchar.h>
+
 #include "colors.h"
 #include "logs.h"
 

@@ -4,10 +4,9 @@
 #include <ctype.h>
 #include <assert.h>
 #include <sys/stat.h>
-#include <wctype.h>
-#include <wchar.h>
-#include <unistd.h>
+#include <cwchar>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "textlib.h"
 
@@ -42,9 +41,10 @@ static size_t get_line_len(const wchar_t* string)
 wchar_t* read_file(const char* file_name, enum File_read_mode mode)
 {
     FILE* file_ptr = fopen(file_name, "rb");
-    // if (mode == TEXT)
-    //     _setmode(fileno(file_ptr), SET_MODE_CONST);
-
+    #if _WIN32
+    if (mode == TEXT)
+        setmode(fileno(file_ptr), SET_MODE_CONST);
+    #endif
     HANDLE_ERROR(file_ptr, "Couldn't open file", NULL);
     TL_DEBUG_MSG("File opened\n");
 

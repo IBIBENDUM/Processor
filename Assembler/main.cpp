@@ -21,6 +21,7 @@ int main(const int argc, char* const* argv)
     if (!handle_cmd_args(argc, argv, "i:o:m:h", &values))
         return 1;
 
+    set_log_level(LOG_LVL_TRACE);
     asm_error err = ASM_NO_ERR;
     err = file_to_asm(values.input_file_name, values.output_file_name);
     print_asm_error(err);

@@ -41,4 +41,4 @@ clean:
 	del /Q $(LIBS_DIR)\*.o
 
 run:
-	.\$(EXECUTABLE) -i ../Examples/input.s
+	.\$(EXECUTABLE) -i ../Examples/Text/input.s

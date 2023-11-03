@@ -4,8 +4,8 @@
 #include <inttypes.h>
 #include <limits.h>
 
-typedef int arg_t;
 typedef int cmd_t;
+typedef int arg_t;
 
 const int FLOAT_COEFFICIENT = 100; ///< Decimal precision
 const size_t VRAM_HEIGHT    = 40;  ///< Height of Virtual RAM frame
@@ -15,6 +15,18 @@ const size_t RAM_SIZE       = VRAM_HEIGHT * VRAM_WIDTH + VRAM_OFFSET;
 
 const int MAX_ARGS_AMOUNT   = 3;  ///< Maximum command arguments amount
 
+/*****************************************************
+*          OPERATION CODE STRUCTURE
+*  | RAM | REG | IMM | ID | ID | ID | ID | ID | ID |
+*  |-----|-----|-----|----|----|----|----|----|----|
+*  |  1  |  1  |  0  |  0 |  0 |  0 |  0 |  0 |  1 |
+*           EXAMPLE TABLE FOR PUSH [RAX]
+******************************************************/
+
+/// @brief Operation codes masks
+///
+/// They are needed to obtain information about command
+/// from the operation code
 enum Op_code_masks
 {
     ARG_IMM_MASK   = 0b00100000,
@@ -23,7 +35,7 @@ enum Op_code_masks
     ID_MASK        = 0b00011111
 };
 
-enum Args_combinations
+enum Args_combinations_masks
 {
     ___ = 1 << 0,
     __I = 1 << 1,
@@ -35,7 +47,7 @@ enum Args_combinations
     ARGS_COMBINATIONS_AMOUNT
 };
 
-const uint8_t args_combinations_arr[] =
+const uint8_t args_combinations_masks_arr[] =
 {
     0b00000000, 0b00100000, 0b01000000,
     0b01100000, 0b10100000, 0b11000000,
