@@ -119,7 +119,7 @@ static cmd_error emit_label(const wchar_t* label_name_ptr, const size_t label_na
     {
         if (wcsncmp(labels->labels_arr[label_id].name, label_name_ptr, label_name_len) == 0)
         {
-            if (labels->labels_arr[label_id].cmd_pos != position)
+            if (labels->labels_arr[label_id].cmd_pos != (arg_t) position)
                 return CMD_REPEATED_LABEL_ERR;
         }
     }
@@ -202,7 +202,7 @@ static cmd_error emit_label_arg(Command* cmd, Labels* labels, const wchar_t* arg
         return CMD_ERROR_ID;\
     } while (0)
 
-static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err, const wchar_t* arg_start_ptr)
+static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err, wchar_t* arg_start_ptr)
 {
 
     assert(cmd);
@@ -218,7 +218,7 @@ static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err,
         *right_br_ptr = L'\0';
 
     size_t arg_len = 0;
-    wchar_t* arg_ptr = get_word((wchar_t*)arg_start_ptr, &arg_len);
+    wchar_t* arg_ptr = get_word(arg_start_ptr, &arg_len);
     LOG_TRACE("arg_ptr = %.*ls", arg_len, arg_ptr);
 
     if (arg_len == 0)

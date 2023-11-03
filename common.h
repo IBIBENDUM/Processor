@@ -79,7 +79,7 @@ constexpr Operation OPERATIONS[OPERATION_AMOUNT] =
 
     #include "commands.inc"
 
-    #undef STRLEN(S)
+    #undef STRLEN
     #undef DEF_CMD
 };
 
