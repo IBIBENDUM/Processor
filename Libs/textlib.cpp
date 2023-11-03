@@ -2,11 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <wctype.h>
 #include <assert.h>
 #include <sys/stat.h>
 #include <cwchar>
-#include <fcntl.h>
 #include <unistd.h>
+#include <fcntl.h>
 
 #include "textlib.h"
 
