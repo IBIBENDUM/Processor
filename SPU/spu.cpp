@@ -109,7 +109,7 @@ static void print_ram(Spu* spu)
     }
     // setlocale(LC_ALL, "");
     #if _WIN32
-    setmode(fileno(file_ptr), SET_MODE_CONST);
+    setmode(fileno(stderr), SET_MODE_CONST);
     #endif
 
     fwrite(spu->vram, position, sizeof(wchar_t), stderr);
