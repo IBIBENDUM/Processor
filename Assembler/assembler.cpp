@@ -274,7 +274,12 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     LOG_INFO("arg_ptr = <%ls>", arg_ptr);
 
     if (possible_args_bitmask == ___)
+    {
+        if (*move_to_non_space_sym(arg_ptr) != L'\0')
+            EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_TOO_MANY_ARGS);
+
         return CMD_NO_ERR;
+    }
 
     wchar_t* left_br_ptr = NULL;
     wchar_t* right_br_ptr = NULL;
@@ -286,15 +291,20 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     cmd_error err = CMD_NO_ERR;
     err = parse_arg(cmd, labels, cmd_err, left_br_ptr + 1);
     if (err != CMD_NO_ERR)
-        return err;
+        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_WRONG_ARG_ERR);
 
     // Find + operator
     wchar_t* operator_ptr = wcschr(left_br_ptr + 1, L'+');
 
     // Get second argument
     if (operator_ptr)
+    {
         err = parse_arg(cmd, labels, cmd_err, operator_ptr + 1);
+        if (err != CMD_NO_ERR)
+            EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_WRONG_ARG_ERR);
+    }
 
+    // BAH: Make other function
     // If there is "exta" args emit error and return from function
     // The term extra arguments refers to arguments that are not expected
     size_t extra_word_len = 0;
