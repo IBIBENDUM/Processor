@@ -13,6 +13,7 @@
 #include "../common.h"
 #define STK_DEBUG
 #include "../Libs/stack.h"
+#include "../Libs/textlib.h"
 #include "../Libs/stack_logs.h"
 #include "../Libs/logs.h"
 #include "../Libs/utils.h"
@@ -107,7 +108,9 @@ static void print_ram(Spu* spu)
         spu->vram[position] = '\n';
     }
     // setlocale(LC_ALL, "");
-    setmode(fileno(stderr), 0x00040000);
+    #if _WIN32
+    setmode(fileno(file_ptr), SET_MODE_CONST);
+    #endif
 
     fwrite(spu->vram, position, sizeof(wchar_t), stderr);
 }
