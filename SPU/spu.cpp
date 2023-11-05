@@ -58,7 +58,6 @@ static arg_t* get_bin_arg(cmd_t* code, ssize_t* ip, struct Spu* spu)
     {
         LOG_TRACE("reg_id = %d", *(arg_t*)((uint8_t*) code + *ip));
         res = (arg_t*) &(spu->regs[*(arg_t*)((uint8_t*) code + *ip)].value);
-
         *ip += sizeof(arg_t);
         LOG_TRACE("res_reg = %d", *res);
     }
@@ -72,47 +71,39 @@ static arg_t* get_bin_arg(cmd_t* code, ssize_t* ip, struct Spu* spu)
 
 static void print_ram(Spu* spu)
 {
-    LOG_INFO("Printing RAM...");
+    LOG_INFO("Printing VRAM...");
     size_t position = 0;
-    for (size_t y = 0; y < VRAM_HEIGHT; y++)
+    const size_t vram_width  = spu->ram[VRAM_WIDTH_POS]  / FLOAT_COEFFICIENT;
+    const size_t vram_height = spu->ram[VRAM_HEIGHT_POS] / FLOAT_COEFFICIENT;
+    const size_t vram_offset = spu->ram[VRAM_OFFSET_POS] / FLOAT_COEFFICIENT;
+    LOG_DEBUG("vram_width  = %d", vram_width);
+    LOG_DEBUG("vram_height = %d", vram_height);
+    LOG_DEBUG("vram_offset = %d", vram_offset);
+    if (vram_width * vram_height + vram_offset > RAM_SIZE)
     {
-        for (size_t x = 0; x < VRAM_WIDTH; x++)
-        {
-            position = (VRAM_WIDTH + 1) * y + x;
-            switch (spu->ram[position - y + VRAM_OFFSET] / FLOAT_COEFFICIENT)
-            {
-                case 0:
-                {
-                    spu->vram[position] = L'⡀';
-                    break;
-                }
-                // BAH: Make something interesting
-                case 1:
-                {
-                    spu->vram[position] = L'⣿';
-                    break;
-                }
-                case 2:
-                {
-                    spu->vram[position] = L'⣾';
-                    break;
-                }
-
-                default:
-                {
-                    spu->vram[position] = '?';
-                    break;
-                }
-            }
-        }
-        spu->vram[position] = '\n';
+        LOG_ERROR("vram_width * vram_height + vram_offset = %d", vram_width * vram_height + vram_offset);
+        LOG_ERROR("VRAM size is larger than RAM");
+        return;
     }
-    // setlocale(LC_ALL, "");
-    #if _WIN32
-    setmode(fileno(stderr), SET_MODE_CONST);
-    #endif
+    for (size_t y = 0; y < vram_height; y++)
+    {
+        for (size_t x = 0; x < vram_width; x++)
+        {
+            position = (vram_width + 1) * y + x;
+            LOG_DEBUG("x = %d", x);
+            LOG_DEBUG("position = %d", position);
+            LOG_DEBUG("position + y + vram_offset = %d", position + y + vram_offset);
+            LOG_DEBUG("spu->ram[position + y + vram_offset] = %d", spu->ram[position + y + vram_offset] / FLOAT_COEFFICIENT);
+            spu->vram[position] = spu->ram[position + y + vram_offset] / FLOAT_COEFFICIENT;
+            // spu->vram[position] = L'к';
+        }
+        spu->vram[position] = L'\n';
+    }
 
-    fwrite(spu->vram, position, sizeof(wchar_t), stderr);
+    #if _WIN32
+    setmode(fileno(stdout), _O_U8TEXT);
+    #endif
+    fwrite(spu->vram, position + 1, sizeof(wchar_t), stdout);
 }
 
 

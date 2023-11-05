@@ -7,22 +7,29 @@
 typedef int cmd_t;
 typedef int arg_t;
 
-const int FLOAT_COEFFICIENT = 100; ///< Decimal precision
-const size_t VRAM_HEIGHT    = 40;  ///< Height of Virtual RAM frame
-const size_t VRAM_WIDTH     = 80;  ///< Width  of Virtual RAM frame
-const size_t VRAM_OFFSET    = 20;  ///< Number of cells not occupied by VRAM
-const size_t RAM_SIZE       = VRAM_HEIGHT * VRAM_WIDTH + VRAM_OFFSET;
+const int    FLOAT_COEFFICIENT  = 100; ///< Decimal precision
+const size_t RAM_SIZE           = 10000; // Maybe too much?
+const size_t VRAM_WIDTH_POS     = 1;   ///< Width  of Virtual RAM frame
+const size_t VRAM_HEIGHT_POS    = 2;   ///< Height of Virtual RAM frame
+const size_t VRAM_OFFSET_POS    = 3;   ///< Number of cells not occupied by VRAM
 
 const int MAX_ARGS_AMOUNT   = 3;  ///< Maximum command arguments amount
-
-/*****************************************************
-*          OPERATION CODE STRUCTURE
-*  | RAM | REG | IMM | ID | ID | ID | ID | ID | ID |
-*  |-----|-----|-----|----|----|----|----|----|----|
-*  |  1  |  1  |  0  |  0 |  0 |  0 |  0 |  0 |  1 |
-*           EXAMPLE TABLE FOR PUSH [RAX]
-******************************************************/
-
+/*
+       SYSTEM RAM DOCS
+  ╔═══════════════════════╗
+  ║ [0]   - RECYCLE BIN   ║
+  ║ [1]   - VRAM WIDTH    ║
+  ║ [2]   - VRAM HEIGHT   ║
+  ║ [3]   - VRAM OFFSET   ║
+  ╚═══════════════════════╝
+  ╔═════════════════════════════════════════════════════╗
+  ║            OPERATION CODE STRUCTURE                 ║
+  ║  ║ RAM ║ REG ║ IMM ║ ID ║ ID ║ ID ║ ID ║ ID ║ ID ║  ║
+  ║  ║-----║-----║-----║----║----║----║----║----║----║  ║
+  ║  ║  1  ║  1  ║  0  ║  0 ║  0 ║  0 ║  0 ║  0 ║  1 ║  ║
+  ║           EXAMPLE TABLE FOR PUSH [RAX]              ║
+  ╚═════════════════════════════════════════════════════╝
+*/
 /// @brief Operation codes masks
 ///
 /// They are needed to obtain information about command

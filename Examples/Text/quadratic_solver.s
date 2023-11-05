@@ -1,13 +1,14 @@
 ;             RAM DOCS
-; ╔══════════════════════════════════╗
-; ║ [0]  - FIRST  ROOT               ║
-; ║	[1]  - SECOND ROOT               ║
-; ║ [2]  - NUMBMER OF ROOTS          ║
-; ║ [3]  - UNIT TEST FIRST  ROOT     ║
-; ║ [4]  - UNIT TEST SECOND ROOT     ║
-; ║ [5]  - UNIT TEST NUMBER OF ROOTS ║
-; ║ [10] - RECYCLE BIN               ║
-; ╚══════════════════════════════════╝
+; ╔════════════════════════════════════╗
+; ║ [100] - FIRST  ROOT                ║
+; ║	[101] - SECOND ROOT                ║
+; ║ [102] - NUMBMER OF ROOTS           ║
+; ║ [103] - UNIT TEST FIRST  ROOT      ║
+; ║ [104] - UNIT TEST SECOND ROOT      ║
+; ║ [105] - UNIT TEST NUMBER OF ROOTS  ║
+; ║ [0]   - RECYCLE BIN                ║
+; ╚════════════════════════════════════╝
+; FIRST 100 CELLS RESERVED FOR SYSTEM NEEDS
 
 call main
 HLT
@@ -22,7 +23,7 @@ main:
 unit_test_1:
     push 1; Push test number
     out; Print test number
-    pop [10]; Remove value from stack
+    pop [0]; Remove value from stack
 
     push 1 ; Init 'a' coefficient
     pop rax
@@ -34,26 +35,26 @@ unit_test_1:
     pop rcx
 
     push 0 ; Init first root
-    pop [3]
+    pop [103]
 
     push 0 ; Init second root
-    pop [3]
+    pop [103]
 
     call solve_qe
     call print_roots
 
     ; Check first root
-    push [0]
+    push [100]
     pop rax
-    push [3]
+    push [103]
     pop rbx
     call check_root
     push rcx
 
     ; Check second root
-    push [1]
+    push [101]
     pop rax
-    push [4]
+    push [104]
     pop rbx
     call check_root
     push rcx
@@ -67,13 +68,13 @@ unit_test_1:
 
     push 0
     out
-    pop [10]
+    pop [0]
     ret
 
     test_succeed:
         push 1
         out; OK
-        pop [10]
+        pop [0]
         ret
 
 ; ╔══════════════════════════════════╗
@@ -169,7 +170,7 @@ calculate_discr:
 solve_incomplete_qe:
     push 0
     ; out
-    pop  [0]
+    pop  [100]
 
     push rbx
     push 0
@@ -181,7 +182,7 @@ solve_incomplete_qe:
     push rax
     div
     ; out
-    pop [1]
+    pop [101]
 
     ret
 
@@ -198,13 +199,13 @@ two_roots:
     push rdx
     add
     ; out
-    pop [0]
+    pop [100]
 
     push rax
     push rdx
     sub
     ; out
-    pop [1]
+    pop [101]
 
     ret
 
@@ -242,14 +243,14 @@ one_root:
     push rax
     div
     ; out
-    pop [0]
+    pop [100]
 
     ret
 
 complex_roots:
     push 404
     ; out
-    pop [0]
+    pop [100]
 
     ret
 
@@ -282,7 +283,7 @@ solve_linear_equation:
         pop rcx
         push 0
         ; out
-        pop [0]
+        pop [100]
 
         ret
 
@@ -294,31 +295,31 @@ free_member_equation:
 
 root_is_any_number:
     push 888
-    pop [0]
+    pop [100]
     ; out
     ret
 
 no_roots:
     push -111
-    pop [0]
+    pop [100]
     ; out
     ret
 
 print_roots:
-    push [0]
+    push [100]
     out
-    pop [0]
+    pop [100]
 
-    push [5]
+    push [105]
     push 2
     je print_second_root
 
     ret
 
     print_second_root:
-        push [1]
+        push [101]
         out
-        pop [1]
+        pop [101]
 
         ret
 
