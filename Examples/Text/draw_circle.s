@@ -12,22 +12,22 @@
 ;      ╚═══════════════════════╝
 ; FIRST 100 CELLS RESERVED FOR SYSTEM NEEDS
 
+; BAH: MAKE NORMAL NAMES
+
 call main
 HLT
 
 main:
 ;   Init VRAM
-    push 80
+    push 60
     pop [1]
-    push 40
+    push 30
     pop [2]
     push 200
     pop [3]
 
     call fill_vram_with_poison
     call draw_circle
-    ; call draw_anti_aliasing
-
 
     dump
     ret
@@ -47,13 +47,117 @@ draw_circle:
 
             push rcx
             push [102]; Radius
-            jbe below_radius
+            push 0.5
+            add
+            jbe below_0
+
+            push rcx
+            push [102]; Radius
+            push 0.7
+            add
+            jbe below_1
+
+            push rcx
+            push [102]; Radius
+            push 1.05
+            add
+            jbe below_2
+
             jmp above_radius
 
-            below_radius:
-            push 10495
-            pop rcx
-            call paint_cell
+            below_1:
+                call calculate_point_quarter
+                push rcx
+                ; out
+                push 1
+                je aa_1
+
+                push rcx
+                push 2
+                je aa_2
+
+                push rcx
+                push 3
+                je aa_3
+
+                jmp aa_4
+
+                aa_1:
+                    push 10479
+                    ; push 49
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+                aa_2:
+                    push 10493
+                    ; push 50
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+                aa_3:
+                    push 10491
+                    ; push 10479
+                    ; push 51
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+
+                aa_4:
+                    push 10463
+                    ; push 52
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+
+            below_2:
+                call calculate_point_quarter
+                push rcx
+                out
+                push 1
+                je ab_2_1
+
+                push rcx
+                push 2
+                je ab_2_2
+
+                push rcx
+                push 3
+                je ab_2_3
+
+                jmp ab_2_4
+
+                ab_2_1:
+                    push 10477
+                    ; push 49
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+                ab_2_2:
+                    push 10477
+                    ; push 50
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+                ab_2_3:
+                    ; push 51
+                    push 10459
+                    ; push 51
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+
+                ab_2_4:
+                    ; push 52
+                    push 10459
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+
+            below_0:
+                push 10495
+                pop rcx
+                call paint_cell
+                jmp above_radius
 
             above_radius:
             push rax
@@ -93,7 +197,7 @@ init_circle:
     div
     pop [101]
 
-    push 15; Radius
+    push 10; Radius
     pop [102]
 
     push 3;  X multiplier
@@ -103,6 +207,41 @@ init_circle:
     pop [104]
 
     ret
+
+calculate_point_quarter:
+    push rax
+    push [100]; X center
+    sub
+    push 0
+    ja quarters_1_or_4
+    jmp quarters_2_or_3
+    quarters_1_or_4:
+        push rbx
+        push [101]; Y center
+        sub
+        push 0
+        jb quarter_1
+        push 4
+        pop rcx
+        ret
+        quarter_1:
+            push 1
+            pop rcx
+            ret
+
+    quarters_2_or_3:
+        push rbx
+        push [101]; Y center
+        sub
+        push 0
+        jb quarter_2
+        push 3
+        pop rcx
+        ret
+        quarter_2:
+            push 2
+            pop rcx
+            ret
 
 calculate_line_length:
     push rcx
@@ -147,7 +286,7 @@ calculate_distance:
 
     ret
 
-paint_cell:
+get_current_position:
     push rbx
     push [1]; X size
     push 2
@@ -158,6 +297,10 @@ paint_cell:
     push [3]; VRAM OFFSET
     add
     pop rdx
+    ret
+
+paint_cell:
+    call get_current_position
     push rcx
     pop [rdx]
 

@@ -33,7 +33,7 @@ struct Label
     arg_t cmd_pos = 0;
 };
 
-const size_t LABELS_MAX_AMOUNT = 50;
+const size_t LABELS_MAX_AMOUNT = 100;
 struct Labels
 {
     Label  labels_arr[LABELS_MAX_AMOUNT] = {};
@@ -131,8 +131,6 @@ static cmd_error emit_label(const line* label_name, const size_t position, Label
     // Check for first compilation
     if (labels->final_size == 0)
     {
-        LOG_ERROR("label_name = %.*ls", label_name->len, label_name->start);
-
         wcsncpy(labels->labels_arr[labels->amount].name, label_name->start, label_name->len);
         labels->labels_arr[labels->amount].cmd_pos = (int) position;
 
