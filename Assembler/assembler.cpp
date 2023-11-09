@@ -41,6 +41,7 @@ struct Labels
     size_t final_size = 0;
 };
 
+const size_t MIN_BYTECODE_CAPACITY = 32;
 struct Bytecode
 {
     uint8_t* code_array;
@@ -415,6 +416,22 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
     return CMD_WRONG_NAME_ERR;
 }
 
+static asm_error realloc_bytecode_array(Bytecode* bytecode, size_t* bytecode_capacity)
+{
+    assert(bytecode);
+    assert(bytecode_capacity);
+
+    *bytecode_capacity *= 2;
+    uint8_t* new_code_array = (uint8_t*) realloc(bytecode->code_array, *bytecode_capacity * sizeof(uint8_t));
+
+    if (!new_code_array)
+        return ASM_MEM_ALLOC_ERR;
+
+    bytecode->code_array = new_code_array;
+
+    return ASM_NO_ERR;
+}
+
 static asm_error parse_file_to_commands(File* file, Bytecode* bytecode, Labels* labels, Compiler_errors* errors)
 {
     assert(file);
@@ -425,11 +442,18 @@ static asm_error parse_file_to_commands(File* file, Bytecode* bytecode, Labels* 
 
     asm_error asm_err = ASM_NO_ERR;
 
+    size_t bytecode_capacity = MIN_BYTECODE_CAPACITY;
+
     bytecode->position = 0;
     *errors = {};
 
     for (size_t i = 0; i < file->line_amount; i++)
     {
+        LOG_DEBUG("bytecode_capacity = %d", bytecode_capacity);
+
+        if (bytecode->position > bytecode_capacity)
+            realloc_bytecode_array(bytecode, &bytecode_capacity);
+
         LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
         LOG_DEBUG("line = %d", i + 1);
         line* line_ptr = file->lines_ptrs + i;
@@ -499,10 +523,9 @@ static asm_error convert_text_to_binary(File* input_file, const char* output_fil
 
     // Find maximum type len and reserve place for the largest
     // BAH: Make with realloc
-    const size_t max_arg_len = (sizeof(cmd_t) > sizeof(arg_t)) ? sizeof(cmd_t) : sizeof(arg_t);
     Bytecode bytecode =
     {
-        .code_array = (uint8_t*) calloc(line_amount * MAX_ARGS_AMOUNT, max_arg_len),
+        .code_array = (uint8_t*) calloc(MIN_BYTECODE_CAPACITY, sizeof(uint8_t)),
         .position = 0
     };
 
