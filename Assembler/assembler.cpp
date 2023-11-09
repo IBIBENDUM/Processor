@@ -474,7 +474,7 @@ static asm_error write_bytecode_to_file(const char* output_file_name, Bytecode* 
         return ASM_FILE_OPEN_ERR;
 
     size_t amount_of_written = fwrite(bytecode->code_array, sizeof(uint8_t), bytecode->position, file_ptr);
-    if (amount_of_written < size)
+    if (amount_of_written < bytecode->position)
         return ASM_WRITE_ERR;
 
     int f_close_ret_val = fclose(file_ptr);
@@ -512,9 +512,9 @@ static asm_error convert_text_to_binary(File* input_file, const char* output_fil
     Labels labels = {};
     Compiler_errors errors = {};
 
-    asm_error = ASM_NO_ERR;
-    asm_err   = parse_file_to_commands(input_file, &bytecode, &labels, &errors); // First  pass
-    asm_err   = parse_file_to_commands(input_file, &bytecode, &labels, &errors); // Second pass
+    asm_error asm_err = ASM_NO_ERR;
+    asm_err = parse_file_to_commands(input_file, &bytecode, &labels, &errors); // First  pass
+    asm_err = parse_file_to_commands(input_file, &bytecode, &labels, &errors); // Second pass
 
     if (asm_err != ASM_NO_ERR)
     {
