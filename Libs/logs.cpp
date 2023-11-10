@@ -5,6 +5,7 @@
 
 #include "logs.h"
 #include "colors.h"
+#include "time_utils.h"
 
 log_level current_log_level = LOG_LVL_TRACE;
 
@@ -25,15 +26,6 @@ struct Log_event
     struct tm* time;
     va_list args;
 };
-
-static char* cast_time_to_str(struct tm* time)
-{
-    assert(time);
-    static char time_buf[] = "%H:%M:%S";
-
-    strftime(time_buf, sizeof(time_buf), "%H:%M:%S", time);
-    return time_buf;
-}
 
 static void init_event(Log_event* log_info, FILE* output_ptr)
 {

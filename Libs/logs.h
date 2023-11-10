@@ -29,6 +29,7 @@ const char* const log_levels_strings[] =
     "WARN" , "ERROR", "DISABLE"
 };
 
+// BAH: Make struct for this~~~~~~~~~~~~~~~~~~>
 #define LOG_TRACE(...) init_log(LOG_LVL_TRACE, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 #define LOG_DEBUG(...) init_log(LOG_LVL_DEBUG, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 #define LOG_INFO(...)  init_log(LOG_LVL_INFO,  __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)

@@ -7,6 +7,7 @@ struct Args_values
 {
     const char* input_file_name;
     const char* output_file_name;
+    const char* listing_file_name;
     enum log_level log_level;
 };
 

@@ -31,10 +31,13 @@ bool handle_cmd_args(const int argc, char* const* argv, const char* format, Args
 
             case 'o':
             {
-                if (!values->output_file_name)
-                    return false;
-
                 values->output_file_name = optarg;
+                break;
+            }
+
+            case 'l':
+            {
+                values->listing_file_name = optarg;
                 break;
             }
 
@@ -95,6 +98,7 @@ void print_help(const char* format)
             {
                 case 'h':   printf("-h             Display help message\n"); break;
                 case 'i':   printf("-i             Choose input file name\n"); break;
+                case 'l':   printf("-l             Choose listing file name\n"); break;
                 case 'o':   printf("-o             Choose output file name\n"); break;
                 case 'm':   printf("-m             Set log level (TRACE, DEBUG, INFO, WARN, ERROR, DISABLE)\n"); break;
                 default:    LOG_ERROR("No help information"); break; // ???

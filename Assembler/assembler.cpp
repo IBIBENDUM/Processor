@@ -8,6 +8,7 @@
 #include "../Libs/colors.h"
 #include "../Libs/logs.h"
 #include "../Libs/utils.h"
+#include "../Libs/time_utils.h"
 #include "../common.h"
 #include "assembler.h"
 #include "assembler_errors.h"
@@ -531,14 +532,25 @@ static char* format_bytecode_string(Bytecode* bytecode)
     return buffer;
 }
 
-static asm_error generate_listing(const char* listing_file_name, const File* input_file, Bytecode* bytecode)
+static asm_error generate_listing(const char* listing_file_name, const File* input_file, const char* output_file_name, Bytecode* bytecode)
 {
+    assert(listing_file_name);
+    assert(input_file);
+    assert(output_file_name);
+    assert(bytecode);
+
     FILE* file_ptr = fopen(listing_file_name, "w");
     if (!file_ptr)
         return ASM_FILE_OPEN_ERR;
 
-    fprintf(file_ptr, "Automated generated listing bla bla bla\n");
-    // Add time file etc
+    fprintf(file_ptr, "══════════════════════════════════════════════\n");
+
+    fprintf(file_ptr, "  Date: %s\n", get_current_date_str());
+    fprintf(file_ptr, "  Time: %s\n", get_current_time_str());
+    fprintf(file_ptr, " Input: %s\n", input_file->file_name);
+    fprintf(file_ptr, "Output: %s\n", output_file_name);
+
+    fprintf(file_ptr, "══════════════════════════════════════════════\n");
 
     bytecode->position = 0;
 
@@ -553,7 +565,7 @@ static asm_error generate_listing(const char* listing_file_name, const File* inp
             continue;
         }
 
-        fprintf(file_ptr, "%04llX ", bytecode->position);
+        fprintf(file_ptr, "%04llX  ", bytecode->position);
 
         line* line_ptr = &input_file->lines_ptrs[i];
 
@@ -576,10 +588,16 @@ static asm_error generate_listing(const char* listing_file_name, const File* inp
         fprintf(file_ptr, "\n");
     }
 
+    const int f_close_ret_val = fclose(file_ptr);
+    file_ptr = NULL;
+
+    if (f_close_ret_val)
+        return ASM_FILE_CLOSE_ERR;
+
     return ASM_NO_ERR;
 }
 
-static asm_error convert_text_to_binary(File* input_file, const char* output_file_name)
+static asm_error convert_text_to_binary(File* input_file, const char* output_file_name, const char* listing_file_name)
 {
     assert(input_file);
     assert(output_file_name);
@@ -613,8 +631,7 @@ static asm_error convert_text_to_binary(File* input_file, const char* output_fil
 
     write_bytecode_to_file(output_file_name, &bytecode);
 
-    const char* listing_file_name = "listing_test.txt"; // FOR TEST
-    generate_listing(listing_file_name, input_file, &bytecode);
+    generate_listing(listing_file_name, input_file, output_file_name, &bytecode);
 
     free_and_null(bytecode.code_array);
 
@@ -623,7 +640,7 @@ static asm_error convert_text_to_binary(File* input_file, const char* output_fil
     return ASM_NO_ERR;
 }
 
-asm_error compile_file(const char* input_file_name, const char* output_file_name)
+asm_error compile_file(const char* input_file_name, const char* output_file_name, const char* listing_file_name)
 {
     assert(input_file_name);
     assert(output_file_name);
@@ -636,7 +653,7 @@ asm_error compile_file(const char* input_file_name, const char* output_file_name
         return ASM_INPUT_FILE_READ_ERR;
     }
 
-    asm_error err = convert_text_to_binary(&input_file, output_file_name);
+    asm_error err = convert_text_to_binary(&input_file, output_file_name, listing_file_name);
     destruct_file(&input_file);
     LOG_INFO("Compilation complete!");
 
