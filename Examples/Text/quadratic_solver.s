@@ -10,72 +10,26 @@
 ; ╚════════════════════════════════════╝
 ; FIRST 100 CELLS RESERVED FOR SYSTEM NEEDS
 
+;           ERROR CODES
+; ╔════════════════════════════════╗
+; ║ -111  - NO ROOTS               ║
+; ║	 404  - COMPLEX ROOTS          ║
+; ║  888  - INFITE NUMBER OF ROOTS ║
+; ╚════════════════════════════════╝
 call main
 HLT
 
 main:
     ; call get_coeffs
     ; call solve_qe
+    ; call print_roots
+
     call unit_test_1
+    call unit_test_2
+    call unit_test_3
+    call unit_test_4
 
     ret
-
-unit_test_1:
-    push 1; Push test number
-    out; Print test number
-    pop [0]; Remove value from stack
-
-    push 1 ; Init 'a' coefficient
-    pop rax
-
-    push 0 ; Init 'b' coefficient
-    pop rbx
-
-    push 0 ; Init 'c' coefficient
-    pop rcx
-
-    push 0 ; Init first root
-    pop [103]
-
-    push 0 ; Init second root
-    pop [103]
-
-    call solve_qe
-    call print_roots
-
-    ; Check first root
-    push [100]
-    pop rax
-    push [103]
-    pop rbx
-    call check_root
-    push rcx
-
-    ; Check second root
-    push [101]
-    pop rax
-    push [104]
-    pop rbx
-    call check_root
-    push rcx
-
-    ; Because check_root return 1 if the root is true
-    ; If the roots passed the test (1 + 1 = 2) test succeed
-
-    add
-    push 2
-    je test_succeed
-
-    push 0
-    out
-    pop [0]
-    ret
-
-    test_succeed:
-        push 1
-        out; OK
-        pop [0]
-        ret
 
 ; ╔══════════════════════════════════╗
 ; ║              INPUT               ║
@@ -115,6 +69,11 @@ get_coeffs:
     ret
 
 solve_qe:
+    push 0
+    pop [100]
+    push 0
+    pop [101]
+
     push rax
     push 0
     je zero_a
@@ -168,6 +127,9 @@ calculate_discr:
 
 ;ax^2 + bx = 0
 solve_incomplete_qe:
+    push 2
+    pop [102]
+
     push 0
     ; out
     pop  [100]
@@ -187,6 +149,8 @@ solve_incomplete_qe:
     ret
 
     incomplete_qe_zero_b:
+        push 1
+        pop [102]
         ret
 
 
@@ -194,6 +158,9 @@ two_roots:
     call d_sqrt_half
 
     call calculate_root_const_part
+
+    push 2
+    pop [102]
 
     push rax
     push rdx
@@ -235,6 +202,9 @@ d_sqrt_half:
 
 
 one_root:
+    push 1
+    pop [102]
+
     push 0
     push rbx
     sub
@@ -250,12 +220,15 @@ one_root:
 complex_roots:
     push 404
     ; out
-    pop [100]
+    pop [102]
 
     ret
 
 solve_linear_equation:
     ; a = 0
+    push 1
+    pop [102]
+
     push rbx
     push 0
     je zero_b
@@ -266,6 +239,7 @@ solve_linear_equation:
    je root_zero
 
     ; a = 0, b != 0, c != 0,
+
     push rcx
     push -1
     mul
@@ -295,26 +269,35 @@ free_member_equation:
 
 root_is_any_number:
     push 888
-    pop [100]
+    pop [102]
     ; out
     ret
 
 no_roots:
-    push -111
-    pop [100]
+    push 0
+    pop [102]
     ; out
     ret
 
 print_roots:
-    push [100]
+    push [102]
     out
-    pop [100]
 
-    push [105]
-    push 2
-    je print_second_root
+    push 1
+    jae print_first_root
 
     ret
+
+    print_first_root:
+        push [100]
+        out
+        pop [100]
+
+        push [102]
+        push 2
+        jae print_second_root
+
+        ret
 
     print_second_root:
         push [101]
@@ -322,4 +305,219 @@ print_roots:
         pop [101]
 
         ret
+
+
+print_separator:
+;   Init VRAM
+    push 10
+    pop [1]
+    push 1
+    pop [2]
+    push 200
+    pop [3]
+
+    push 200
+    pop rdx
+    separator_cycle:
+        push 45
+        pop [rdx]
+
+        push rdx
+        push 1
+        add
+        pop rdx
+
+        push rdx
+        push 208; X size
+        jb separator_cycle
+
+    dump
+
+    ret
+
+unit_test_1:
+    call print_separator
+    push 1; Push test number
+    out; Print test number
+    pop [0]; Remove value from stack
+
+    call print_separator
+
+    push 1 ; Init 'a' coefficient
+    out
+    pop rax
+
+    push 0 ; Init 'b' coefficient
+    out
+    pop rbx
+
+    push 0 ; Init 'c' coefficient
+    out
+    pop rcx
+
+    push 0 ; Init first root
+    pop [103]
+
+    push 0 ; Init second root
+    pop [104]
+
+    push  1; Init roots amount
+    pop [105]
+
+    call print_separator
+
+    call test_equation
+    ret
+
+unit_test_2:
+    call print_separator
+    push 2; Push test number
+    out; Print test number
+    pop [0]; Remove value from stack
+
+    call print_separator
+
+    push 0 ; Init 'a' coefficient
+    out
+    pop rax
+
+    push 0 ; Init 'b' coefficient
+    out
+    pop rbx
+
+    push 0 ; Init 'c' coefficient
+    out
+    pop rcx
+
+    push 0 ; Init first root
+    pop [103]
+
+    push 0 ; Init second root
+    pop [104]
+
+    push  888; Init roots amount
+    pop [105]
+
+    call print_separator
+
+    call test_equation
+    ret
+
+unit_test_3:
+    call print_separator
+    push 3; Push test number
+    out; Print test number
+    pop [0]; Remove value from stack
+
+    call print_separator
+
+    push 1 ; Init 'a' coefficient
+    out
+    pop rax
+
+    push 3 ; Init 'b' coefficient
+    out
+    pop rbx
+
+    push -4 ; Init 'c' coefficient
+    out
+    pop rcx
+
+    push 1 ; Init first root
+    pop [103]
+
+    push -4 ; Init second root
+    pop [104]
+
+    push  2; Init roots amount
+    pop [105]
+
+    call print_separator
+
+    call test_equation
+    ret
+
+unit_test_4:
+    call print_separator
+    push 4; Push test number
+    out; Print test number
+    pop [0]; Remove value from stack
+
+    call print_separator
+
+    push 0 ; Init 'a' coefficient
+    out
+    pop rax
+
+    push 0 ; Init 'b' coefficient
+    out
+    pop rbx
+
+    push 1 ; Init 'c' coefficient
+    out
+    pop rcx
+
+    push 0 ; Init first root
+    pop [103]
+
+    push 0 ; Init second root
+    pop [104]
+
+    push  0; Init roots amount
+    pop [105]
+
+    call print_separator
+
+    call test_equation
+    ret
+
+test_equation:
+    call solve_qe
+    call print_roots
+    call print_separator
+    call compare_roots
+
+    ret
+
+compare_roots:
+    ; Check number of roots
+    push [102]
+    push [105]
+    jne test_failed
+
+    push [100]
+    pop rax
+    push [103]
+    pop rbx
+    call check_root
+    push rcx
+
+    ; Check second root
+    push [101]
+    pop rax
+    push [104]
+    pop rbx
+    call check_root
+    push rcx
+
+    ; Because check_root return 1 if the root is true
+    ; If the roots passed the test (1 + 1 = 2) test succeed
+
+    add
+    push 2
+    je test_succeed
+    jmp test_failed
+
+    test_failed:
+        push 0
+        out
+        pop [0]
+        ret
+
+    test_succeed:
+        push 1
+        out; OK
+        pop [0]
+        ret
+
 

@@ -74,6 +74,7 @@ MAKE_COND_JMP(jae, >=)
 MAKE_COND_JMP(jb, <)
 MAKE_COND_JMP(jbe, <=)
 MAKE_COND_JMP(je, ==)
+MAKE_COND_JMP(jne, !=)
 #undef MAKE_COND_JMP
 
 DEF_CMD(HLT, ___,

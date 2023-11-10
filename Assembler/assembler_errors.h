@@ -40,15 +40,15 @@ struct Compiler_errors
 enum asm_error
 {
     #include "asm_errors.inc"
+    // There is undef inside "asm_errors.inc"
 };
-#undef DEF_ASM_ERR
 
 #define DEF_ASM_ERR(NAME) #NAME,
 const char * const asm_errors_strs[] =
 {
     #include "asm_errors.inc"
+    // There is undef inside "asm_errors.inc"
 };
-#undef DEF_ASM_ERR
 
 void emit_cmd_error(Command_error* cmd_err, cmd_error error, const line* err_substring);
 

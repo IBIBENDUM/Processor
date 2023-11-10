@@ -72,12 +72,14 @@ static void print_ram(Spu* spu)
 {
     LOG_INFO("Printing VRAM...");
     size_t position = 0;
+
     const size_t vram_width  = spu->ram[VRAM_WIDTH_POS]  / FLOAT_COEFFICIENT;
     const size_t vram_height = spu->ram[VRAM_HEIGHT_POS] / FLOAT_COEFFICIENT;
     const size_t vram_offset = spu->ram[VRAM_OFFSET_POS] / FLOAT_COEFFICIENT;
     LOG_DEBUG("vram_width  = %d", vram_width);
     LOG_DEBUG("vram_height = %d", vram_height);
     LOG_DEBUG("vram_offset = %d", vram_offset);
+
     if (vram_width * vram_height + vram_offset > RAM_SIZE)
     {
         LOG_ERROR("vram_width * vram_height + vram_offset = %d", vram_width * vram_height + vram_offset);

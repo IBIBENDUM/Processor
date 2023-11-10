@@ -1,8 +1,8 @@
 ══════════════════════════════════════════════
   Date: 11/10/23
-  Time: 21:20:42
- Input: ../Examples/Text/draw_circle.s
-Output: ../Examples/Binaries/draw_circle.asm
+  Time: 23:58:38
+ Input: ../Examples/Text/quadratic_solver.s
+Output: ../Examples/Binaries/quadratic_solver.asm
 ══════════════════════════════════════════════
 1    
 2    
@@ -18,328 +18,513 @@ Output: ../Examples/Binaries/draw_circle.asm
 12   
 13   
 14   
-15   0000      0025 000C      call main
-16   0008      000C           HLT
+15   
+16   
 17   
-18   000C                     main:
-19   
-20   000C      0021 1770      push 60
-21   0014      00A2 0064      pop [1]
-22   001C      0021 0BB8      push 30
-23   0024      00A2 00C8      pop [2]
-24   002C      0021 4E20      push 200
-25   0034      00A2 012C      pop [3]
+18   
+19   0000      0025 000C      call main
+20   0008      000D           HLT
+21   
+22   000C                     main:
+23   000C      0025 0500      
+24   0014      0025 05A4      
+25   001C      0025 0648      
 26   
-27   003C      0025 059C      call fill_vram_with_poison
-28   0044      0025 0054      call draw_circle
-29   
-30   004C      000F           dump
-31   0050      0006           ret
-32   
-33   0054                     draw_circle:
-34   0054      0025 034C      call init_circle
+27   0024      0025 06EC      call unit_test_1
+28   002C      0006           call unit_test_2
+29   0030      0041 0001      call unit_test_3
+30   0038      0041 0002      call unit_test_4
+31   
+32   0040      002B 005C      ret
+33   
+34   
 35   
-36   005C      0021 0000      push 0
-37   0064      0042 0002      pop rbx
+36   
+37   
 38   
-39   006C                     y_cycle:
-40   006C      0021 0000      push 0
-41   0074      0042 0001      pop rax
+39   
+40   
+41   
 42   
-43   007C                     x_cycle:
-44   007C      0025 04B0      call calculate_distance
+43   
+44   
 45   
-46   0084      0041 0003      push rcx
-47   008C      00A1 27D8      push [102]
-48   0094      0021 0032      push 0.5
-49   009C      0010           add
-50   00A0      002A 02A8      jbe first_pass
-51   
-52   00A8      0041 0003      push rcx
-53   00B0      00A1 27D8      push [102]
-54   00B8      0021 0046      push 0.7
-55   00C0      0010           add
-56   00C4      002A 00F8      jbe second_pass
-57   
-58   00CC      0041 0003      push rcx
-59   00D4      00A1 27D8      push [102]
-60   00DC      0021 0069      push 1.05
-61   00E4      0010           add
-62   00E8      002A 01D0      jbe third_pass
-63   
-64   00F0      0024 02C8      jmp above_radius
+46   0048                     check_root:
+47   0048      0021 0000      push rax
+48   0050      0042 0003      push rbx
+49   0058      0006           je equal_roots
+50   005C      0021 0064      push 0
+51   0064      0042 0003      pop rcx
+52   006C      0006           ret
+53   
+54   0070                     equal_roots:
+55   0070      000E           push 1
+56   0074      0042 0001      pop rcx
+57   007C      000E           ret
+58   
+59   0080                     get_coeffs:
+60   0080      0042 0002      in
+61   0088      000E           pop rax
+62   
+63   008C      0042 0003      in
+64   0094      0006           pop rbx
 65   
-66   00F8                     second_pass:
-67   00F8      0025 03B4      call calculate_point_quarter
-68   0100      0041 0003      push rcx
-69   0108      0021 0064      push 1
-70   0110      002B 0150      je AA_1_1
-71   
-72   0118      0041 0003      push rcx
-73   0120      0021 00C8      push 2
-74   0128      002B 0170      je AA_1_2
-75   
-76   0130      0041 0003      push rcx
-77   0138      0021 012C      push 3
-78   0140      002B 0190      je AA_1_3
-79   
-80   0148      0024 01B0      jmp AA_1_4
-81   
-82   0150                     AA_1_1:
-83   0150      0021 FFD5C     push 10479
-84   0158      0042 0003      
-85   0160      0025 0580      pop rcx
-86   0168      0024 02C8      call paint_cell
-87   0170      0021 1002D4    jmp above_radius
-88   0178                     AA_1_2:
-89   0178      0042 0003      push 10493
-90   0180      0025 0580      
-91   0188      0024 02C8      pop rcx
-92   0190      0021 10020C    call paint_cell
-93   0198      0042 0003      jmp above_radius
-94   01A0                     AA_1_3:
-95   01A0      0025 0580      push 10491
-96   01A8      0024 02C8      
-97   01B0      0021 FF71C     
-98   01B8      0042 0003      pop rcx
-99   01C0      0025 0580      call paint_cell
-100  01C8      0024 02C8      jmp above_radius
+66   0098      0021 0000      in
+67   00A0      00A2 2710      pop rcx
+68   
+69   00A8      0021 0000      ret
+70   
+71   00B0                     solve_qe:
+72   00B0      00A2 2774      push 0
+73   00B8      0041 0001      pop [100]
+74   00C0      0021 0000      push 0
+75   00C8      002B 012C      pop [101]
+76   
+77   00D0      0041 0003      push rax
+78   00D8      0021 0000      push 0
+79   00E0      002B 0138      je zero_a
+80   
+81   00E8      0025 015C      push rcx
+82   00F0      0041 0004      push 0
+83   00F8      0021 0000      je quadratic_zero_c
+84   
+85   0100      002B 0150      call calculate_discr
+86   
+87   0108      0041 0004      push rdx
+88   0110      0021 0000      push 0
+89   0118      0029 0144      je zero_discr
+90   
+91   0120      0025 0218      push rdx
+92   0128      0006           push 0
+93   012C      0025 0338      jb negative_discr
+94   
+95   0134      0006           call two_roots
+96   0138      0025 01A0      ret
+97   
+98   0140                     zero_a:
+99   0140      0006           call solve_linear_equation
+100  0144      0025 0324      ret
 101  
-102  01D0                     AA_1_4:
-103  01D0      0025 03B4      push 10463
-104  01D8      0041 0003      
-105  01E0      0021 0064      pop rcx
-106  01E8      002B 0228      call paint_cell
-107  01F0      0041 0003      jmp above_radius
-108  
-109  01F8                     third_pass:
-110  01F8      0021 00C8      call calculate_point_quarter
-111  0200      002B 0248      push rcx
-112  0208      0041 0003      push 1
-113  0210      0021 012C      je AA_2_1
-114  
-115  0218      002B 0268      push rcx
-116  0220      0024 0288      push 2
-117  0228      0021 FFC94     je AA_2_2
-118  
-119  0230      0042 0003      push rcx
-120  0238      0025 0580      push 3
-121  0240      0024 02C8      je AA_2_3
-122  
-123  0248      0021 FFC94     jmp AA_2_4
-124  
-125  0250                     AA_2_1:
-126  0250      0042 0003      push 10477
-127  0258      0025 0580      pop rcx
-128  0260      0024 02C8      call paint_cell
-129  0268      0021 FF58C     jmp above_radius
-130  
-131  0270                     AA_2_2:
-132  0270      0042 0003      push 10477
-133  0278      0025 0580      pop rcx
-134  0280      0024 02C8      call paint_cell
-135  0288      0021 FF58C     jmp above_radius
+102  014C                     quadratic_zero_c:
+103  014C      0006           call solve_incomplete_qe
+104  0150      0025 02DC      ret
+105  
+106  0158                     negative_discr:
+107  0158      0006           call complex_roots
+108  015C      0041 0002      ret
+109  
+110  0164                     zero_discr:
+111  0164      0041 0002      call one_root
+112  016C      0013           ret
+113  
+114  0170                     calculate_discr:
+115  0170      0041 0001      push rbx
+116  0178      0041 0003      push rbx
+117  0180      0013           mul
+118  0184      0021 0190      push rax
+119  018C      0013           push rcx
+120  0190      0012           mul
+121  0194      0042 0004      push 4
+122  019C      0006           mul
+123  01A0      0021 00C8      sub
+124  01A8      00A2 27D8      pop rdx
+125  
+126  01B0      0021 0000      ret
+127  
+128  
+129  01B8                     solve_incomplete_qe:
+130  01B8      00A2 2710      push 2
+131  01C0      0041 0002      pop [102]
+132  
+133  01C8      0021 0000      push 0
+134  01D0      002B 0204      
+135  01D8      0021 FFFFFF9C  pop  [100]
 136  
-137  0290                     AA_2_3:
-138  0290      0042 0003      push 10459
-139  0298      0025 0580      pop rcx
-140  02A0      0024 02C8      call paint_cell
-141  02A8      0021 10039C    jmp above_radius
-142  
-143  02B0                     AA_2_4:
-144  02B0      0042 0003      push 10459
-145  02B8      0025 0580      pop rcx
-146  02C0      0024 02C8      call paint_cell
-147  02C8      0041 0001      jmp above_radius
+137  01E0      0041 0002      push rbx
+138  01E8      0013           push 0
+139  01EC      0041 0001      je incomplete_qe_zero_b
+140  
+141  01F4      0014           push -1
+142  01F8      00A2 2774      push rbx
+143  0200      0006           mul
+144  0204      0021 0064      push rax
+145  020C      00A2 27D8      div
+146  0214      0006           
+147  0218      0025 02AC      pop [101]
 148  
-149  02D0                     first_pass:
-150  02D0      0021 0064      push 10495
-151  02D8      0010           pop rcx
-152  02DC      0042 0001      call paint_cell
-153  02E4      0041 0001      jmp above_radius
-154  
-155  02EC                     above_radius:
-156  02EC      00A1 0064      push rax
-157  02F4      0021 0064      push 1
-158  02FC      0010           add
-159  0300      0029 007C      pop rax
-160  
-161  0308      0041 0002      push rax
-162  0310      0021 0064      push [1]
-163  0318      0010           push 1
-164  031C      0042 0002      add
-165  0324      0041 0002      jb x_cycle
-166  
-167  032C      00A1 00C8      push rbx
-168  0334      0021 0064      push 1
-169  033C      0010           add
-170  0340      0029 006C      pop rbx
-171  
-172  0348      0006           push rbx
-173  034C      00A1 0064      push [2]
-174  0354      0021 00C8      push 1
-175  035C      0013           add
-176  0360      00A2 2710      jb y_cycle
-177  
-178  0368      00A1 00C8      ret
+149  0220      0025 0274      ret
+150  
+151  0228                     incomplete_qe_zero_b:
+152  0228      0021 00C8      push 1
+153  0230      00A2 27D8      pop [102]
+154  0238      0041 0001      ret
+155  
+156  
+157  0240                     two_roots:
+158  0240      0041 0004      call d_sqrt_half
+159  
+160  0248      0011           call calculate_root_const_part
+161  
+162  024C      00A2 2710      push 2
+163  0254      0041 0001      pop [102]
+164  
+165  025C      0041 0004      push rax
+166  0264      0012           push rdx
+167  0268      00A2 2774      add
+168  0270      0006           
+169  0274      0041 0002      pop [100]
+170  
+171  027C      0021 FFFFFF9C  push rax
+172  0284      0013           push rdx
+173  0288      0041 0001      sub
+174  0290      0021 00C8      
+175  0298      0013           pop [101]
+176  
+177  029C      0014           ret
+178  
 179  
-180  0370                     init_circle:
-181  0370      0021 00C8      
-182  0378      0013           push [1]
-183  037C      00A2 2774      push 2
-184  0384      000D           div
-185  0388      00A2 27D8      pop [100]
-186  
-187  0390      0021 012C      
-188  0398      00A2 283C      push [2]
-189  03A0      0021 0064      push 2
-190  03A8      00A2 28A0      div
-191  03B0      0006           pop [101]
-192  
-193  03B4      0041 0001      
-194  03BC      00A1 2710      in
-195  03C4      0011           pop [102]
-196  
-197  03C8      0021 0000      push 3
-198  03D0      0027 03E0      pop [103]
-199  
-200  03D8      0024 042C      push 1
-201  03E0      0041 0002      pop [104]
+180  02A0                     calculate_root_const_part:
+181  02A0      0042 0001      push rbx
+182  02A8      0006           push -1
+183  02AC      0041 0004      mul
+184  02B4      0003           push rax
+185  02B8      0021 00C8      push 2
+186  02C0      0041 0001      mul
+187  02C8      0013           div
+188  02CC      0014           pop rax
+189  02D0      0042 0004      ret
+190  
+191  
+192  02D8                     d_sqrt_half:
+193  02D8      0006           push rdx
+194  02DC      0021 0064      sqrt
+195  02E4      00A2 27D8      push 2
+196  02EC      0021 0000      push rax
+197  02F4      0041 0002      mul
+198  02FC      0012           div
+199  0300      0021 00C8      pop rdx
+200  
+201  0308      0014           ret
 202  
-203  03E8      00A1 2774      ret
-204  
-205  03F0                     calculate_point_quarter:
-206  03F0      0011           push rax
-207  03F4      0021 0000      push [100]
-208  03FC      0029 0418      sub
-209  0404      0021 0190      push 0
-210  040C      0042 0003      ja quarters_1_or_4
-211  0414      0006           jmp quarters_2_or_3
-212  0418                     quarters_1_or_4:
-213  0418      0021 0064      push rbx
-214  0420      0042 0003      push [101]
-215  0428      0006           sub
-216  042C      0041 0002      push 0
-217  0434      00A1 2774      jb quarter_1
-218  043C      0011           push 4
-219  0440      0021 0000      pop rcx
-220  0448      0029 0464      ret
-221  0450                     quarter_1:
-222  0450      0021 012C      push 1
-223  0458      0042 0003      pop rcx
-224  0460      0006           ret
-225  
-226  0464                     quarters_2_or_3:
-227  0464      0021 00C8      push rbx
-228  046C      0042 0003      push [101]
-229  0474      0006           sub
-230  0478      0041 0003      push 0
-231  0480      0041 0004      jb quarter_2
-232  0488      0011           push 3
-233  048C      0041 0003      pop rcx
-234  0494      0041 0004      ret
-235  049C                     quarter_2:
-236  049C      0011           push 2
-237  04A0      0012           pop rcx
-238  04A4      0042 0004      ret
-239  
-240  04AC                     calculate_line_length:
-241  04AC      0006           push rcx
-242  04B0      0041 0001      push rdx
-243  04B8      0042 0003      sub
-244  
-245  04C0      00A1 2710      push rcx
-246  04C8      0042 0004      push rdx
-247  04D0      0025 0478      sub
-248  
-249  04D8      0041 0004      mul
-250  
-251  04E0      00A1 283C      pop rdx
-252  
-253  04E8      0013           ret
-254  
-255  04EC                     calculate_distance:
-256  04EC      0041 0002      push rax
-257  04F4      0042 0003      pop rcx
-258  04FC      00A1 2774      push [100]
-259  0504      0042 0004      pop rdx
-260  050C      0025 0478      call calculate_line_length
-261  0514      0041 0004      push rdx
-262  
-263  051C      00A1 28A0      push [103]
-264  0524      0013           div
-265  
-266  0528      0010           push rbx
-267  052C      0003           pop rcx
-268  0530      0042 0003      push [101]
-269  0538      0006           pop rdx
-270  053C      0041 0002      call calculate_line_length
-271  0544      00A1 0064      push rdx
-272  
-273  054C      0021 00C8      push [104]
-274  0554      0010           div
+203  
+204  030C                     one_root:
+205  030C      0041 0001      push 1
+206  0314      0014           pop [102]
+207  
+208  0318      00A2 2710      push 0
+209  0320      0006           push rbx
+210  0324      0021 9DD0      sub
+211  032C      00A2 27D8      push 2
+212  0334      0006           div
+213  0338      0021 0064      push rax
+214  0340      00A2 27D8      div
+215  0348      0041 0002      
+216  0350      0021 0000      pop [100]
+217  
+218  0358      002B 039C      ret
+219  
+220  0360                     complex_roots:
+221  0360      0041 0003      push 404
+222  0368      0021 0000      
+223  0370      002B 03A8      pop [102]
+224  
+225  0378      0041 0003      ret
+226  
+227  0380                     solve_linear_equation:
+228  0380      0021 FFFFFF9C  
+229  0388      0013           push 1
+230  038C      0041 0002      pop [102]
+231  
+232  0394      0014           push rbx
+233  0398      0006           push 0
+234  039C      0025 03C4      je zero_b
+235  
+236  03A4      0006           
+237  03A8      0042 0003      push rcx
+238  03B0      0021 0000      push 0
+239  03B8      00A2 2710      je root_zero
+240  
+241  03C0      0006           
+242  
+243  03C4      0041 0003      push rcx
+244  03CC      0021 0000      push -1
+245  03D4      002B 03E4      mul
+246  
+247  03DC      0024 03F8      push rbx
+248  03E4      0021 15AE0     div
+249  
+250  03EC      00A2 27D8      ret
+251  
+252  03F4                     zero_b:
+253  03F4      0006           call free_member_equation
+254  03F8      0021 0000      ret
+255  
+256  0400                     root_zero:
+257  0400      00A2 27D8      pop rcx
+258  0408      0006           push 0
+259  040C      00A1 27D8      
+260  0414      000F           pop [100]
+261  
+262  0418      0021 0064      ret
+263  
+264  0420                     free_member_equation:
+265  0420      0028 042C      push rcx
+266  0428      0006           push 0
+267  042C      00A1 2710      je root_is_any_number
+268  0434      000F           jmp no_roots
+269  
+270  0438                     root_is_any_number:
+271  0438      00A2 2710      push 888
+272  0440      00A1 27D8      pop [102]
+273  0448      0021 00C8      
+274  0450      0028 045C      ret
 275  
-276  0558      0012           add
-277  
-278  055C      0041 0001      sqrt
-279  0564      0010           pop rcx
-280  
-281  0568      00A1 012C      ret
-282  
-283  0570                     get_current_position:
-284  0570      0010           push rbx
-285  0574      0042 0004      push [1]
-286  057C      0006           push 2
-287  0580      0025 053C      add
-288  0588      0041 0003      mul
-289  0590      00C2 0004      push rax
-290  0598      0006           add
-291  059C      0021 0000      push [3]
-292  05A4      0042 0002      add
-293  05AC      0021 0000      pop rdx
-294  05B4      0042 0001      ret
+276  0458                     no_roots:
+277  0458      0006           push 0
+278  045C      00A1 2774      pop [102]
+279  0464      000F           
+280  0468      00A2 2774      ret
+281  
+282  0470                     print_roots:
+283  0470      0006           push [102]
+284  0474      0021 03E8      out
+285  
+286  047C      00A2 0064      push 1
+287  0484      0021 0064      jae print_first_root
+288  
+289  048C      00A2 00C8      ret
+290  
+291  0494                     print_first_root:
+292  0494      0021 4E20      push [100]
+293  049C      00A2 012C      out
+294  04A4      0021 4E20      pop [100]
 295  
-296  05BC                     paint_cell:
-297  05BC      0021 FEE84     call get_current_position
-298  05C4      0042 0003      push rcx
-299  05CC      0025 0580      pop [rdx]
-300  
-301  05D4      0041 0001      ret
-302  
-303  05DC                     fill_vram_with_poison:
-304  05DC      0021 0064      push 0
-305  05E4      0010           pop rbx
+296  04AC      0042 0004      push [102]
+297  04B4      0021 1194      push 2
+298  04BC      00C2 0004      jae print_second_root
+299  
+300  04C4      0041 0004      ret
+301  
+302  04CC                     print_second_root:
+303  04CC      0021 0064      push [101]
+304  04D4      0011           out
+305  04D8      0042 0004      pop [101]
 306  
-307  05E8                     init_vram_y_cycle:
-308  05E8      0042 0001      push 0
-309  05F0      0041 0001      pop rax
-310  
-311  05F8                     init_vram_x_cycle:
-312  05F8      00A1 0064      push 10441
-313  0600      0021 0064      pop rcx
-314  0608      0010           call paint_cell
-315  
-316  060C      0029 05BC      push rax
-317  0614      0041 0002      push 1
-318  061C      0021 0064      add
-319  0624      0010           pop rax
-320  
-321  0628      0042 0002      push rax
-322  0630      0041 0002      push [1]
-323  0638      00A1 00C8      push 1
-324  0640      0021 0064      add
-325  0648      0010           jb init_vram_x_cycle
-326  
-327  064C      0029 05AC      push rbx
-328  0654      0006           push 1
-329  0658      0000           add
-330  065C      0000           pop rbx
-331  
-332  0660      0000           push rbx
-333  0664      0000           push [2]
-334  0668      0000           push 1
-335  066C      0000           add
-336  0670      0000           jb init_vram_y_cycle
+307  04E0      0041 0004      ret
+308  
+309  
+310  04E8                     print_separator:
+311  
+312  04E8      0021 5140      push 10
+313  04F0      0029 04B4      pop [1]
+314  04F8      0010           push 1
+315  04FC      0006           pop [2]
+316  0500      0025 0474      push 200
+317  0508      0021 0064      pop [3]
+318  
+319  0510      000F           push 200
+320  0514      00A2 0000      pop rdx
+321  051C                     separator_cycle:
+322  051C      0025 0474      push 45
+323  0524      0021 0064      pop [rdx]
+324  
+325  052C      000F           push rdx
+326  0530      0042 0001      push 1
+327  0538      0021 0000      add
+328  0540      000F           pop rdx
+329  
+330  0544      0042 0002      push rdx
+331  054C      0021 0000      push 208
+332  0554      000F           jb separator_cycle
+333  
+334  0558      0042 0003      dump
+335  
+336  0560      0021 0000      ret
 337  
-338  0674      0000           ret
-339  
+338  0568                     unit_test_1:
+339  0568      00A2 283C      call print_separator
+340  0570      0021 0000      push 1
+341  0578      00A2 28A0      out
+342  0580      0021 0064      pop [0]
+343  
+344  0588      00A2 2904      call print_separator
+345  
+346  0590      0025 0474      push 1 
+347  0598      0025 0790      out
+348  05A0      0006           pop rax
+349  
+350  05A4      0025 0474      push 0 
+351  05AC      0021 00C8      out
+352  05B4      000F           pop rbx
+353  
+354  05B8      00A2 0000      push 0 
+355  05C0      0025 0474      out
+356  05C8      0021 0000      pop rcx
+357  
+358  05D0      000F           push 0 
+359  05D4      0042 0001      pop [103]
+360  
+361  05DC      0021 0000      push 0 
+362  05E4      000F           pop [104]
+363  
+364  05E8      0042 0002      push  1
+365  05F0      0021 0000      pop [105]
+366  
+367  05F8      000F           call print_separator
+368  
+369  05FC      0042 0003      call test_equation
+370  0604      0021 0000      ret
+371  
+372  060C                     unit_test_2:
+373  060C      00A2 283C      call print_separator
+374  0614      0021 0000      push 2
+375  061C      00A2 28A0      out
+376  0624      0021 15AE0     pop [0]
+377  
+378  062C      00A2 2904      call print_separator
+379  
+380  0634      0025 0474      push 0 
+381  063C      0025 0790      out
+382  0644      0006           pop rax
+383  
+384  0648      0025 0474      push 0 
+385  0650      0021 012C      out
+386  0658      000F           pop rbx
+387  
+388  065C      00A2 0000      push 0 
+389  0664      0025 0474      out
+390  066C      0021 0064      pop rcx
+391  
+392  0674      000F           push 0 
+393  0678      0042 0001      pop [103]
+394  
+395  0680      0021 012C      push 0 
+396  0688      000F           pop [104]
+397  
+398  068C      0042 0002      push  888
+399  0694      0021 FFFFFE70  pop [105]
+400  
+401  069C      000F           call print_separator
+402  
+403  06A0      0042 0003      call test_equation
+404  06A8      0021 0064      ret
+405  
+406  06B0                     unit_test_3:
+407  06B0      00A2 283C      call print_separator
+408  06B8      0021 FFFFFE70  push 3
+409  06C0      00A2 28A0      out
+410  06C8      0021 00C8      pop [0]
+411  
+412  06D0      00A2 2904      call print_separator
+413  
+414  06D8      0025 0474      push 1 
+415  06E0      0025 0790      out
+416  06E8      0006           pop rax
+417  
+418  06EC      0025 0474      push 3 
+419  06F4      0021 0190      out
+420  06FC      000F           pop rbx
+421  
+422  0700      00A2 0000      push -4 
+423  0708      0025 0474      out
+424  0710      0021 0000      pop rcx
+425  
+426  0718      000F           push 1 
+427  071C      0042 0001      pop [103]
+428  
+429  0724      0021 0000      push -4 
+430  072C      000F           pop [104]
+431  
+432  0730      0042 0002      push  2
+433  0738      0021 0064      pop [105]
+434  
+435  0740      000F           call print_separator
+436  
+437  0744      0042 0003      call test_equation
+438  074C      0021 0000      ret
+439  
+440  0754                     unit_test_4:
+441  0754      00A2 283C      call print_separator
+442  075C      0021 0000      push 4
+443  0764      00A2 28A0      out
+444  076C      0021 0000      pop [0]
+445  
+446  0774      00A2 2904      call print_separator
+447  
+448  077C      0025 0474      push 0 
+449  0784      0025 0790      out
+450  078C      0006           pop rax
+451  
+452  0790      0025 0098      push 0 
+453  0798      0025 040C      out
+454  07A0      0025 0474      pop rbx
+455  
+456  07A8      0025 07B4      push 1 
+457  07B0      0006           out
+458  07B4      00A1 27D8      pop rcx
+459  
+460  07BC      00A1 2904      push 0 
+461  07C4      002C 0848      pop [103]
+462  
+463  07CC      00A1 2710      push 0 
+464  07D4      0042 0001      pop [104]
+465  
+466  07DC      00A1 283C      push  0
+467  07E4      0042 0002      pop [105]
+468  
+469  07EC      0025 0030      call print_separator
+470  
+471  07F4      0041 0003      call test_equation
+472  07FC      00A1 2774      ret
+473  
+474  0804                     test_equation:
+475  0804      0042 0001      call solve_qe
+476  080C      00A1 28A0      call print_roots
+477  0814      0042 0002      call print_separator
+478  081C      0025 0030      call compare_roots
+479  
+480  0824      0041 0003      ret
+481  
+482  082C                     compare_roots:
+483  082C      0011           
+484  0830      0021 00C8      push [102]
+485  0838      002B 0860      push [105]
+486  0840      0024 0848      jne test_failed
+487  
+488  0848      0021 0000      push [100]
+489  0850      000F           pop rax
+490  0854      00A2 0000      push [103]
+491  085C      0006           pop rbx
+492  0860      0021 0064      call check_root
+493  0868      000F           push rcx
+494  
+495  086C      00A2 0000      
+496  0874      0006           push [101]
+497  0878      0000           pop rax
+498  087C      0000           push [104]
+499  0880      0000           pop rbx
+500  0884      0000           call check_root
+501  0888      0000           push rcx
+502  
+503  088C      0000           
+504  0890      0000           
+505  
+506  0894      0000           add
+507  0898      0000           push 2
+508  089C      0000           je test_succeed
+509  08A0      0000           jmp test_failed
+510  
+511  08A4                     test_failed:
+512  08A4      0000           push 0
+513  08A8      0000           out
+514  08AC      0000           pop [0]
+515  08B0      0000           ret
+516  
+517  08B4                     test_succeed:
+518  08B4      0000           push 1
+519  08B8      0000           out
+520  08BC      0000           pop [0]
+521  08C0      0000           ret
+522  
+523  
+524  

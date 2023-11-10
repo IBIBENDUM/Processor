@@ -15,10 +15,11 @@ const size_t BYTECODE_PADDING = 15;
 const size_t LINE_IDX_PADDING = 5;
 const size_t AMOUNT_OF_LEADING_ZEROES = 4;
 const size_t SPACE_AMOUNT_AFTER_POSITION = 6;
+const size_t FORMAT_BYTECODE_SIZE = 32;
 
 static char* format_bytecode_string(Bytecode* bytecode)
 {
-    static char buffer[16] = "";
+    static char buffer[FORMAT_BYTECODE_SIZE] = "";
 
     const uint8_t* cmd_ptr = bytecode->code_array + bytecode->position;
     size_t buffer_pos = sprintf(buffer, "%0*llX", AMOUNT_OF_LEADING_ZEROES, *(cmd_t*)cmd_ptr);

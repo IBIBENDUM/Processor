@@ -53,6 +53,7 @@ static bool check_args_correctness(const Command* cmd, const int op_code)
 cmd_error emit_command(const Command* const cmd, Command_error* const cmd_err, Bytecode* bytecode)
 {
     assert(cmd);
+    assert(cmd_err);
     assert(bytecode);
 
     const int op_code = cmd->cmd_id | (ARG_IMM_MASK * cmd->has_imm) | (ARG_REG_MASK * cmd->has_reg) | (ARG_RAM_MASK * cmd->has_ram);
