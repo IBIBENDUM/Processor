@@ -142,7 +142,7 @@ DEF_CMD(div, ___,
             ip = -1;
             fprintf(stderr, "Division by zero occured!");
         }
-        PUSH((arg_t) (value_2 * (COEFF) / value_1));
+        PUSH((arg_t) (value_2 * FLOAT_COEFFICIENT / value_1));
     })
 
 #undef DEF_CMD
