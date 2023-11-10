@@ -112,7 +112,6 @@ DEF_CMD(dump, ___,
         print_ram(spu);
     })
 
-// BAH: Remove one define and make different defines
 #define MAKE_OPERATION_CMD(NAME, OPERATION, COEFF)\
 DEF_CMD(NAME, ___,\
     {\

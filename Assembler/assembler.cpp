@@ -124,14 +124,14 @@ static cmd_error emit_label(const line* label_name, const size_t position, Label
         return CMD_TOO_LONG_LABEL_ERR;
     }
 
-    // for (size_t label_id = 0; label_id < labels->amount; label_id++)
-    // {
-    //     if (wcsncmp(labels->labels_arr[label_id].name, label_name->start, label_name->len) == 0)
-    //     {
-    //         if (labels->labels_arr[label_id].cmd_pos != (arg_t) position)
-    //             return CMD_REPEATED_LABEL_ERR;
-    //     }
-    // }
+    for (size_t label_id = 0; label_id < labels->amount; label_id++)
+    {
+        if (wcsncmp(labels->labels_arr[label_id].name, label_name->start, label_name->len) == 0)
+        {
+            if (labels->labels_arr[label_id].cmd_pos != (arg_t) position)
+                return CMD_REPEATED_LABEL_ERR;
+        }
+    }
 
     // Check for first compilation
     if (labels->final_size == 0)
