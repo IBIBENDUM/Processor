@@ -11,11 +11,10 @@
 
 #include "spu.h"
 #include "../common.h"
-#define STK_DEBUG
 #include "../Libs/stack.h"
 #include "../Libs/textlib.h"
-#include "../Libs/stack_logs.h"
 #include "../Libs/logs.h"
+#include "../Libs/stack_logs.h"
 #include "../Libs/utils.h"
 
 // BAH: Add RAM sleep
@@ -95,7 +94,6 @@ static void print_ram(Spu* spu)
             LOG_DEBUG("position + y + vram_offset = %d", position + y + vram_offset);
             LOG_DEBUG("spu->ram[position + y + vram_offset] = %d", spu->ram[position + y + vram_offset] / FLOAT_COEFFICIENT);
             spu->vram[position] = spu->ram[position + y + vram_offset] / FLOAT_COEFFICIENT;
-            // spu->vram[position] = L'к';
         }
         spu->vram[position] = L'\n';
     }
@@ -105,7 +103,6 @@ static void print_ram(Spu* spu)
     #endif
     fwrite(spu->vram, position + 1, sizeof(wchar_t), stdout);
 }
-
 
 void execute_program(cmd_t* code_array, struct Spu* spu)
 {
@@ -118,13 +115,7 @@ void execute_program(cmd_t* code_array, struct Spu* spu)
         LOG_TRACE("ip = %lld", ip);
         cmd_t cmd = *((uint8_t*) code_array + ip);
         LOG_DEBUG("spu->spu_stack.size = %d", spu->spu_stack.size);
-        dump_stack(stderr, spu->spu_stack, 0);
-        LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
-        for (int i = 0; i < spu->spu_stack.size; i++)
-        {
-            LOG_WARN("[%d] = %d", i, spu->spu_stack.data[i]);
-        }
-        LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+        dump_stack(stderr, &spu->spu_stack, 0);
         switch (cmd & ID_MASK)
         {
             #define DEF_CMD(NAME, ARG_MASK, ...) case OPERATIONS[NAME##_enum].id: ip += sizeof(cmd_t); __VA_ARGS__; break;

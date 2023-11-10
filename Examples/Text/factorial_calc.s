@@ -12,10 +12,10 @@ main:
 
     ret
 
-;~~~~~~~~~~~~~~~~~~~~~~~~~
-; input: rax
-; output: rax
-;~~~~~~~~~~~~~~~~~~~~~~~~~
+;══════════════════════
+; INPUT: rax
+; OUTPUT: rax
+;══════════════════════
 calc_factorial:
     push rax
     push 1

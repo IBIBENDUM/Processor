@@ -1,17 +1,345 @@
 ══════════════════════════════════════════════
   Date: 11/10/23
-  Time: 18:30:50
- Input: ../Examples/Text/input.s
-Output: ../Examples/Binaries/output.asm
+  Time: 21:20:42
+ Input: ../Examples/Text/draw_circle.s
+Output: ../Examples/Binaries/draw_circle.asm
 ══════════════════════════════════════════════
-1    0000      00A1 0138      push [3.12]
-2    0008      0024 0014      jmp a
-3    0010      000C           HLT
+1    
+2    
+3    
 4    
-5    0014                     a:
-6    0014      000E           out
-7    0018      000C           HLT
+5    
+6    
+7    
 8    
-9    001C                     a:
+9    
 10   
 11   
+12   
+13   
+14   
+15   0000      0025 000C      call main
+16   0008      000C           HLT
+17   
+18   000C                     main:
+19   
+20   000C      0021 1770      push 60
+21   0014      00A2 0064      pop [1]
+22   001C      0021 0BB8      push 30
+23   0024      00A2 00C8      pop [2]
+24   002C      0021 4E20      push 200
+25   0034      00A2 012C      pop [3]
+26   
+27   003C      0025 059C      call fill_vram_with_poison
+28   0044      0025 0054      call draw_circle
+29   
+30   004C      000F           dump
+31   0050      0006           ret
+32   
+33   0054                     draw_circle:
+34   0054      0025 034C      call init_circle
+35   
+36   005C      0021 0000      push 0
+37   0064      0042 0002      pop rbx
+38   
+39   006C                     y_cycle:
+40   006C      0021 0000      push 0
+41   0074      0042 0001      pop rax
+42   
+43   007C                     x_cycle:
+44   007C      0025 04B0      call calculate_distance
+45   
+46   0084      0041 0003      push rcx
+47   008C      00A1 27D8      push [102]
+48   0094      0021 0032      push 0.5
+49   009C      0010           add
+50   00A0      002A 02A8      jbe first_pass
+51   
+52   00A8      0041 0003      push rcx
+53   00B0      00A1 27D8      push [102]
+54   00B8      0021 0046      push 0.7
+55   00C0      0010           add
+56   00C4      002A 00F8      jbe second_pass
+57   
+58   00CC      0041 0003      push rcx
+59   00D4      00A1 27D8      push [102]
+60   00DC      0021 0069      push 1.05
+61   00E4      0010           add
+62   00E8      002A 01D0      jbe third_pass
+63   
+64   00F0      0024 02C8      jmp above_radius
+65   
+66   00F8                     second_pass:
+67   00F8      0025 03B4      call calculate_point_quarter
+68   0100      0041 0003      push rcx
+69   0108      0021 0064      push 1
+70   0110      002B 0150      je AA_1_1
+71   
+72   0118      0041 0003      push rcx
+73   0120      0021 00C8      push 2
+74   0128      002B 0170      je AA_1_2
+75   
+76   0130      0041 0003      push rcx
+77   0138      0021 012C      push 3
+78   0140      002B 0190      je AA_1_3
+79   
+80   0148      0024 01B0      jmp AA_1_4
+81   
+82   0150                     AA_1_1:
+83   0150      0021 FFD5C     push 10479
+84   0158      0042 0003      
+85   0160      0025 0580      pop rcx
+86   0168      0024 02C8      call paint_cell
+87   0170      0021 1002D4    jmp above_radius
+88   0178                     AA_1_2:
+89   0178      0042 0003      push 10493
+90   0180      0025 0580      
+91   0188      0024 02C8      pop rcx
+92   0190      0021 10020C    call paint_cell
+93   0198      0042 0003      jmp above_radius
+94   01A0                     AA_1_3:
+95   01A0      0025 0580      push 10491
+96   01A8      0024 02C8      
+97   01B0      0021 FF71C     
+98   01B8      0042 0003      pop rcx
+99   01C0      0025 0580      call paint_cell
+100  01C8      0024 02C8      jmp above_radius
+101  
+102  01D0                     AA_1_4:
+103  01D0      0025 03B4      push 10463
+104  01D8      0041 0003      
+105  01E0      0021 0064      pop rcx
+106  01E8      002B 0228      call paint_cell
+107  01F0      0041 0003      jmp above_radius
+108  
+109  01F8                     third_pass:
+110  01F8      0021 00C8      call calculate_point_quarter
+111  0200      002B 0248      push rcx
+112  0208      0041 0003      push 1
+113  0210      0021 012C      je AA_2_1
+114  
+115  0218      002B 0268      push rcx
+116  0220      0024 0288      push 2
+117  0228      0021 FFC94     je AA_2_2
+118  
+119  0230      0042 0003      push rcx
+120  0238      0025 0580      push 3
+121  0240      0024 02C8      je AA_2_3
+122  
+123  0248      0021 FFC94     jmp AA_2_4
+124  
+125  0250                     AA_2_1:
+126  0250      0042 0003      push 10477
+127  0258      0025 0580      pop rcx
+128  0260      0024 02C8      call paint_cell
+129  0268      0021 FF58C     jmp above_radius
+130  
+131  0270                     AA_2_2:
+132  0270      0042 0003      push 10477
+133  0278      0025 0580      pop rcx
+134  0280      0024 02C8      call paint_cell
+135  0288      0021 FF58C     jmp above_radius
+136  
+137  0290                     AA_2_3:
+138  0290      0042 0003      push 10459
+139  0298      0025 0580      pop rcx
+140  02A0      0024 02C8      call paint_cell
+141  02A8      0021 10039C    jmp above_radius
+142  
+143  02B0                     AA_2_4:
+144  02B0      0042 0003      push 10459
+145  02B8      0025 0580      pop rcx
+146  02C0      0024 02C8      call paint_cell
+147  02C8      0041 0001      jmp above_radius
+148  
+149  02D0                     first_pass:
+150  02D0      0021 0064      push 10495
+151  02D8      0010           pop rcx
+152  02DC      0042 0001      call paint_cell
+153  02E4      0041 0001      jmp above_radius
+154  
+155  02EC                     above_radius:
+156  02EC      00A1 0064      push rax
+157  02F4      0021 0064      push 1
+158  02FC      0010           add
+159  0300      0029 007C      pop rax
+160  
+161  0308      0041 0002      push rax
+162  0310      0021 0064      push [1]
+163  0318      0010           push 1
+164  031C      0042 0002      add
+165  0324      0041 0002      jb x_cycle
+166  
+167  032C      00A1 00C8      push rbx
+168  0334      0021 0064      push 1
+169  033C      0010           add
+170  0340      0029 006C      pop rbx
+171  
+172  0348      0006           push rbx
+173  034C      00A1 0064      push [2]
+174  0354      0021 00C8      push 1
+175  035C      0013           add
+176  0360      00A2 2710      jb y_cycle
+177  
+178  0368      00A1 00C8      ret
+179  
+180  0370                     init_circle:
+181  0370      0021 00C8      
+182  0378      0013           push [1]
+183  037C      00A2 2774      push 2
+184  0384      000D           div
+185  0388      00A2 27D8      pop [100]
+186  
+187  0390      0021 012C      
+188  0398      00A2 283C      push [2]
+189  03A0      0021 0064      push 2
+190  03A8      00A2 28A0      div
+191  03B0      0006           pop [101]
+192  
+193  03B4      0041 0001      
+194  03BC      00A1 2710      in
+195  03C4      0011           pop [102]
+196  
+197  03C8      0021 0000      push 3
+198  03D0      0027 03E0      pop [103]
+199  
+200  03D8      0024 042C      push 1
+201  03E0      0041 0002      pop [104]
+202  
+203  03E8      00A1 2774      ret
+204  
+205  03F0                     calculate_point_quarter:
+206  03F0      0011           push rax
+207  03F4      0021 0000      push [100]
+208  03FC      0029 0418      sub
+209  0404      0021 0190      push 0
+210  040C      0042 0003      ja quarters_1_or_4
+211  0414      0006           jmp quarters_2_or_3
+212  0418                     quarters_1_or_4:
+213  0418      0021 0064      push rbx
+214  0420      0042 0003      push [101]
+215  0428      0006           sub
+216  042C      0041 0002      push 0
+217  0434      00A1 2774      jb quarter_1
+218  043C      0011           push 4
+219  0440      0021 0000      pop rcx
+220  0448      0029 0464      ret
+221  0450                     quarter_1:
+222  0450      0021 012C      push 1
+223  0458      0042 0003      pop rcx
+224  0460      0006           ret
+225  
+226  0464                     quarters_2_or_3:
+227  0464      0021 00C8      push rbx
+228  046C      0042 0003      push [101]
+229  0474      0006           sub
+230  0478      0041 0003      push 0
+231  0480      0041 0004      jb quarter_2
+232  0488      0011           push 3
+233  048C      0041 0003      pop rcx
+234  0494      0041 0004      ret
+235  049C                     quarter_2:
+236  049C      0011           push 2
+237  04A0      0012           pop rcx
+238  04A4      0042 0004      ret
+239  
+240  04AC                     calculate_line_length:
+241  04AC      0006           push rcx
+242  04B0      0041 0001      push rdx
+243  04B8      0042 0003      sub
+244  
+245  04C0      00A1 2710      push rcx
+246  04C8      0042 0004      push rdx
+247  04D0      0025 0478      sub
+248  
+249  04D8      0041 0004      mul
+250  
+251  04E0      00A1 283C      pop rdx
+252  
+253  04E8      0013           ret
+254  
+255  04EC                     calculate_distance:
+256  04EC      0041 0002      push rax
+257  04F4      0042 0003      pop rcx
+258  04FC      00A1 2774      push [100]
+259  0504      0042 0004      pop rdx
+260  050C      0025 0478      call calculate_line_length
+261  0514      0041 0004      push rdx
+262  
+263  051C      00A1 28A0      push [103]
+264  0524      0013           div
+265  
+266  0528      0010           push rbx
+267  052C      0003           pop rcx
+268  0530      0042 0003      push [101]
+269  0538      0006           pop rdx
+270  053C      0041 0002      call calculate_line_length
+271  0544      00A1 0064      push rdx
+272  
+273  054C      0021 00C8      push [104]
+274  0554      0010           div
+275  
+276  0558      0012           add
+277  
+278  055C      0041 0001      sqrt
+279  0564      0010           pop rcx
+280  
+281  0568      00A1 012C      ret
+282  
+283  0570                     get_current_position:
+284  0570      0010           push rbx
+285  0574      0042 0004      push [1]
+286  057C      0006           push 2
+287  0580      0025 053C      add
+288  0588      0041 0003      mul
+289  0590      00C2 0004      push rax
+290  0598      0006           add
+291  059C      0021 0000      push [3]
+292  05A4      0042 0002      add
+293  05AC      0021 0000      pop rdx
+294  05B4      0042 0001      ret
+295  
+296  05BC                     paint_cell:
+297  05BC      0021 FEE84     call get_current_position
+298  05C4      0042 0003      push rcx
+299  05CC      0025 0580      pop [rdx]
+300  
+301  05D4      0041 0001      ret
+302  
+303  05DC                     fill_vram_with_poison:
+304  05DC      0021 0064      push 0
+305  05E4      0010           pop rbx
+306  
+307  05E8                     init_vram_y_cycle:
+308  05E8      0042 0001      push 0
+309  05F0      0041 0001      pop rax
+310  
+311  05F8                     init_vram_x_cycle:
+312  05F8      00A1 0064      push 10441
+313  0600      0021 0064      pop rcx
+314  0608      0010           call paint_cell
+315  
+316  060C      0029 05BC      push rax
+317  0614      0041 0002      push 1
+318  061C      0021 0064      add
+319  0624      0010           pop rax
+320  
+321  0628      0042 0002      push rax
+322  0630      0041 0002      push [1]
+323  0638      00A1 00C8      push 1
+324  0640      0021 0064      add
+325  0648      0010           jb init_vram_x_cycle
+326  
+327  064C      0029 05AC      push rbx
+328  0654      0006           push 1
+329  0658      0000           add
+330  065C      0000           pop rbx
+331  
+332  0660      0000           push rbx
+333  0664      0000           push [2]
+334  0668      0000           push 1
+335  066C      0000           add
+336  0670      0000           jb init_vram_y_cycle
+337  
+338  0674      0000           ret
+339  

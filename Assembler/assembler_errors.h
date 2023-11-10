@@ -5,6 +5,16 @@
 
 #include "../Libs/textlib.h"
 
+// Emit command error code and return error code
+#define EMIT_CMD_ERROR_AND_RETURN_IT(CMD_ERROR_PTR, CMD_ERROR_ID)       \
+    do {                                                                \
+        wchar_t* op_name = (wchar_t*) OPERATIONS[cmd->cmd_id - 1].name; \
+        line err_substring = {op_name, wcslen(op_name)};                \
+        emit_cmd_error(CMD_ERROR_PTR, CMD_ERROR_ID, &err_substring);    \
+                                                                        \
+        return CMD_ERROR_ID;                                            \
+    } while (0)
+
 enum cmd_error
 {
     #define DEF_CMD_ERR(NAME, ...) NAME,

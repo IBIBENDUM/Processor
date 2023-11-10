@@ -12,6 +12,7 @@
 #include "assembler_errors.h"
 
 const size_t BYTECODE_PADDING = 15;
+const size_t LINE_IDX_PADDING = 5;
 const size_t AMOUNT_OF_LEADING_ZEROES = 4;
 const size_t SPACE_AMOUNT_AFTER_POSITION = 6;
 
@@ -65,7 +66,7 @@ asm_error generate_listing(const char* listing_file_name, const File* input_file
     for (size_t i = 0; i < input_file->line_amount; i++)
     {
         // Print line index
-        fprintf(file_ptr, "%-5d", i + 1);
+        fprintf(file_ptr, "%-*d", LINE_IDX_PADDING, i + 1);
         const size_t line_len = get_line_len(input_file->lines_ptrs[i].start);
 
         // Skip line if empty
@@ -89,7 +90,7 @@ asm_error generate_listing(const char* listing_file_name, const File* input_file
         if (parse_label(&op_name, line_ptr))
         {
             fprintf(file_ptr, "%*s", BYTECODE_PADDING, ""); // Add padding
-            fprintf(file_ptr, "%ls\n", input_file->lines_ptrs[i].start);
+            fprintf(file_ptr, "%ls\n", move_to_non_space_sym(input_file->lines_ptrs[i].start));
             continue;
         }
         // Print bytecode

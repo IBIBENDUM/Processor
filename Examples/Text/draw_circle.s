@@ -12,8 +12,6 @@
 ;      ╚═══════════════════════╝
 ; FIRST 100 CELLS RESERVED FOR SYSTEM NEEDS
 
-; BAH: MAKE NORMAL NAMES
-
 call main
 HLT
 
@@ -49,52 +47,51 @@ draw_circle:
             push [102]; Radius
             push 0.5
             add
-            jbe below_0
+            jbe first_pass
 
             push rcx
             push [102]; Radius
             push 0.7
             add
-            jbe below_1
+            jbe second_pass
 
             push rcx
             push [102]; Radius
             push 1.05
             add
-            jbe below_2
+            jbe third_pass
 
             jmp above_radius
 
-            below_1:
+            second_pass:
                 call calculate_point_quarter
                 push rcx
-                ; out
                 push 1
-                je aa_1
+                je AA_1_1
 
                 push rcx
                 push 2
-                je aa_2
+                je AA_1_2
 
                 push rcx
                 push 3
-                je aa_3
+                je AA_1_3
 
-                jmp aa_4
+                jmp AA_1_4
 
-                aa_1:
+                AA_1_1:
                     push 10479
                     ; push 49
                     pop rcx
                     call paint_cell
                     jmp above_radius
-                aa_2:
+                AA_1_2:
                     push 10493
                     ; push 50
                     pop rcx
                     call paint_cell
                     jmp above_radius
-                aa_3:
+                AA_1_3:
                     push 10491
                     ; push 10479
                     ; push 51
@@ -102,58 +99,54 @@ draw_circle:
                     call paint_cell
                     jmp above_radius
 
-                aa_4:
+                AA_1_4:
                     push 10463
                     ; push 52
                     pop rcx
                     call paint_cell
                     jmp above_radius
 
-            below_2:
+            third_pass:
                 call calculate_point_quarter
                 push rcx
-                out
                 push 1
-                je ab_2_1
+                je AA_2_1
 
                 push rcx
                 push 2
-                je ab_2_2
+                je AA_2_2
 
                 push rcx
                 push 3
-                je ab_2_3
+                je AA_2_3
 
-                jmp ab_2_4
+                jmp AA_2_4
 
-                ab_2_1:
+                AA_2_1:
                     push 10477
-                    ; push 49
-                    pop rcx
-                    call paint_cell
-                    jmp above_radius
-                ab_2_2:
-                    push 10477
-                    ; push 50
-                    pop rcx
-                    call paint_cell
-                    jmp above_radius
-                ab_2_3:
-                    ; push 51
-                    push 10459
-                    ; push 51
                     pop rcx
                     call paint_cell
                     jmp above_radius
 
-                ab_2_4:
-                    ; push 52
+                AA_2_2:
+                    push 10477
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+
+                AA_2_3:
                     push 10459
                     pop rcx
                     call paint_cell
                     jmp above_radius
 
-            below_0:
+                AA_2_4:
+                    push 10459
+                    pop rcx
+                    call paint_cell
+                    jmp above_radius
+
+            first_pass:
                 push 10495
                 pop rcx
                 call paint_cell
@@ -197,7 +190,8 @@ init_circle:
     div
     pop [101]
 
-    push 10; Radius
+    ; push 10; Radius
+    in
     pop [102]
 
     push 3;  X multiplier

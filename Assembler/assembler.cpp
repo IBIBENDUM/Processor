@@ -14,198 +14,10 @@
 #include "assembler.h"
 #include "assembler_errors.h"
 #include "assembler_listing.h"
-
-struct Command
-{
-    cmd_t   cmd_id;
-    arg_t   reg_id;
-    arg_t   imm_value;
-    uint8_t possible_args_bitmask;
-
-    bool    has_ram;
-    bool    has_reg;
-    bool    has_imm;
-    bool    has_label;
-};
-
-const ssize_t LABEL_POISON_VALUE = -1;
-const size_t MAX_LABEL_NAME_LENGTH = 50;
-struct Label
-{
-    wchar_t name[MAX_LABEL_NAME_LENGTH] = {};
-    arg_t cmd_pos = 0;
-};
-
-const size_t LABELS_MAX_AMOUNT = 100;
-struct Labels
-{
-    Label  labels_arr[LABELS_MAX_AMOUNT] = {};
-    size_t amount = 0;
-    size_t final_size = 0;
-};
-
-/**
- * @brief Checks whether the command can have the arguments passed to it
- *
- * struct Command contains possible combinations of arguments,@n
- * args_combinations_arr_mask contains bitmasks for argument combinations
- *
- * @param op_code command byte code @see "common.h"
- * @param cmd      command structure that contains possible
- *                 arguments combinations
- * @return true  if this command has this combination of arguments
- * @return false if not
- */
-static bool check_args_correctness(const Command* cmd, const int op_code)
-{
-    for (size_t bit = 0; bit < ARGS_COMBINATIONS_AMOUNT; bit++)
-    {
-        if (cmd->possible_args_bitmask & (1 << bit))
-        {
-            if ((op_code & (~ID_MASK)) == args_combinations_masks_arr[bit])
-            {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-// Emit command error code and return error code
-#define EMIT_CMD_ERROR_AND_RETURN_IT(CMD_ERROR_PTR, CMD_ERROR_ID)       \
-    do {                                                                \
-        wchar_t* op_name = (wchar_t*) OPERATIONS[cmd->cmd_id - 1].name; \
-        line err_substring = {op_name, wcslen(op_name)};                \
-        emit_cmd_error(CMD_ERROR_PTR, CMD_ERROR_ID, &err_substring);    \
-                                                                        \
-        return CMD_ERROR_ID;                                            \
-    } while (0)
-
-static cmd_error emit_bytecode(const void* value, const size_t type_size, Bytecode* bytecode)
-{
-    assert(value);
-    assert(bytecode);
-
-    memcpy(bytecode->code_array + bytecode->position, value, type_size);
-    bytecode->position += type_size;
-
-    return CMD_NO_ERR;
-}
-
-static cmd_error emit_command(const Command* const cmd, Command_error* const cmd_err, Bytecode* bytecode)
-{
-    assert(cmd);
-    assert(bytecode);
-
-    const int op_code = cmd->cmd_id | (ARG_IMM_MASK * cmd->has_imm) | (ARG_REG_MASK * cmd->has_reg) | (ARG_RAM_MASK * cmd->has_ram);
-
-    if (!check_args_correctness(cmd, op_code))
-        EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_WRONG_ARG_ERR);
-
-    emit_bytecode(&op_code, sizeof(cmd_t), bytecode);
-
-    if (cmd->has_imm)
-        emit_bytecode(&cmd->imm_value, sizeof(arg_t), bytecode);
-
-    if (cmd->has_reg)
-        emit_bytecode(&cmd->reg_id, sizeof(arg_t), bytecode);
-
-    return CMD_NO_ERR;
-}
-#undef EMIT_BYTE_CODE
-
-static cmd_error emit_label(const line* label_name, const size_t position, Labels* labels)
-{
-    assert(label_name);
-    assert(labels);
-
-    if (label_name->len > MAX_LABEL_NAME_LENGTH - 1)
-    {
-        return CMD_TOO_LONG_LABEL_ERR;
-    }
-
-    for (size_t label_id = 0; label_id < labels->amount; label_id++)
-    {
-        if (wcsncmp(labels->labels_arr[label_id].name, label_name->start, label_name->len) == 0)
-        {
-            if (labels->labels_arr[label_id].cmd_pos != (arg_t) position)
-                return CMD_REPEATED_LABEL_ERR;
-        }
-    }
-
-    // Check for first compilation
-    if (labels->final_size == 0)
-    {
-        wcsncpy(labels->labels_arr[labels->amount].name, label_name->start, label_name->len);
-        labels->labels_arr[labels->amount].cmd_pos = (int) position;
-
-        labels->amount++;
-        return CMD_NO_ERR;
-    }
-    return CMD_NO_ERR;
-}
-
-static cmd_error emit_imm_arg(Command* cmd, const wchar_t* arg_ptr)
-{
-    wchar_t* strtod_end_ptr = NULL;
-    const double imm_double = wcstod(arg_ptr, &strtod_end_ptr);
-    if (*strtod_end_ptr == L'\0' || *strtod_end_ptr == L' ')
-    {
-        LOG_TRACE("Argument type = imm");
-        LOG_INFO("imm_value = %.2lf", imm_double);
-
-        cmd->has_imm = true;
-        cmd->imm_value = (arg_t) (imm_double * FLOAT_COEFFICIENT);
-        return CMD_NO_ERR;
-    }
-    return CMD_WRONG_ARG_ERR;
-}
-
-static cmd_error emit_reg_arg(Command* cmd, const wchar_t* arg_ptr)
-{
-    if (arg_ptr[0] == L'r' && arg_ptr[2] == L'x')
-    {
-        const wchar_t reg_id = arg_ptr[1];
-        if (L'a' <= reg_id && reg_id <= L'd')
-        {
-            LOG_TRACE("Argument type = reg");
-            LOG_INFO("reg_id = %d", reg_id);
-
-            cmd->has_reg = true;
-            cmd->reg_id = reg_id - L'a' + 1;
-            return CMD_NO_ERR;
-        }
-    }
-    return CMD_WRONG_ARG_ERR;
-}
-
-static cmd_error emit_label_arg(Command* cmd, Labels* labels, const wchar_t* arg_ptr)
-{
-    if (labels->final_size == 0)
-    {
-        cmd->has_imm = true;
-        cmd->has_label   = true;
-        cmd->imm_value = LABEL_POISON_VALUE;
-        return CMD_NO_ERR;
-    }
-
-    for (size_t id = 0; id < labels->amount; id++)
-    {
-        const wchar_t* label_name = labels->labels_arr[id].name;
-        if (wcsncmp(arg_ptr, label_name, wcslen(label_name)) == 0)
-        {
-            cmd->has_imm = true;
-            cmd->has_label = true;
-            cmd->imm_value = labels->labels_arr[id].cmd_pos;
-            return CMD_NO_ERR;
-        }
-    }
-    return CMD_WRONG_ARG_ERR;
-}
+#include "assembler_emitters.h"
 
 static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err, wchar_t* arg_start_ptr)
 {
-
     assert(cmd);
     assert(labels);
     assert(cmd_err);
@@ -213,7 +25,6 @@ static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err,
 
     // Replace ']' with '\0' and back so that the search for imm and label
     // takes place without taking into account the bracket
-    LOG_INFO("%ls", arg_start_ptr);
     wchar_t* right_br_ptr = wcschr(arg_start_ptr, L']');
     if (right_br_ptr)
         *right_br_ptr = L'\0';
@@ -230,19 +41,16 @@ static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err,
     }
 
     // TODO: add macro
-    bool is_arg_read = false;
+    bool is_arg_read = false; // There is bool because i need to return right bracket
     if (!cmd->has_imm && emit_imm_arg(cmd, arg_ptr) == CMD_NO_ERR)
-    {
         is_arg_read = true;
-    }
+
     else if (!cmd->has_reg && emit_reg_arg(cmd, arg_ptr) == CMD_NO_ERR)
-    {
         is_arg_read = true;
-    }
+
     else if (!cmd->has_label && emit_label_arg(cmd, labels, arg_ptr) == CMD_NO_ERR)
-    {
         is_arg_read = true;
-    }
+
     if (right_br_ptr)
         *right_br_ptr = L']';
 
@@ -252,20 +60,6 @@ static cmd_error parse_arg(Command* cmd, Labels* labels, Command_error* cmd_err,
     return CMD_WRONG_ARG_ERR;
 }
 
-static bool emit_ram_arg(Command* cmd, wchar_t* arg_ptr, wchar_t**  left_br_ptr, wchar_t** right_br_ptr)
-{
-    *left_br_ptr = wcschr(arg_ptr, L'[');
-    *right_br_ptr = wcschr(arg_ptr, L']');
-
-    if (*left_br_ptr && *right_br_ptr && (*right_br_ptr - *left_br_ptr > 0))
-    {
-        LOG_INFO("cmd has RAM");
-        cmd->has_ram = true;
-        return true;
-    }
-    return false;
-}
-
 // BAH: add struct for cmd, labels, cmd_err
 static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, const int possible_args_bitmask, wchar_t* arg_ptr)
 {
@@ -273,8 +67,6 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     assert(cmd);
     assert(labels);
     assert(cmd_err);
-
-    LOG_INFO("arg_ptr = <%ls>", arg_ptr);
 
     if (possible_args_bitmask == ___)
     {
@@ -307,8 +99,7 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
             EMIT_CMD_ERROR_AND_RETURN_IT(cmd_err, CMD_WRONG_ARG_ERR);
     }
 
-    // BAH: Make other function
-    // If there is "exta" args emit error and return from function
+    // If there is "extra" args emit error and return from function
     // The term extra arguments refers to arguments that are not expected
     size_t extra_word_len = 0;
 
@@ -382,8 +173,6 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
         return CMD_NO_ERR;
     }
 
-    LOG_DEBUG("op_name_str = <%.*ls>", op_name.len, op_name.start);
-
     #define DEF_CMD(NAME, POSSIBLE_ARGS_BITMASK, ...)                                                                  \
         if (get_operation(cmd, &op_name, &OPERATIONS[NAME ## _enum]))                                                  \
         {                                                                                                              \
@@ -405,10 +194,11 @@ static cmd_error parse_line_to_command(Command* cmd, Labels* labels, Command_err
         if (err != CMD_NO_ERR)
             emit_cmd_error(cmd_err, err, &err_substring);
 
-        LOG_TRACE("LABEL LINE");
+        LOG_TRACE("Empty line!");
         return err;
     }
     emit_cmd_error(cmd_err, CMD_WRONG_NAME_ERR, &err_substring);
+
     return CMD_WRONG_NAME_ERR;
 }
 
@@ -445,13 +235,10 @@ static asm_error parse_file_to_commands(File* file, Bytecode* bytecode, Labels* 
 
     for (size_t i = 0; i < file->line_amount; i++)
     {
-        LOG_DEBUG("bytecode_capacity = %d", bytecode_capacity);
-
         if (bytecode->position > bytecode_capacity)
             realloc_bytecode_array(bytecode, &bytecode_capacity);
 
         LOG_TRACE("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~");
-        LOG_DEBUG("line = %d", i + 1);
         line* line_ptr = file->lines_ptrs + i;
         replace_with_zero(line_ptr, L';'); // Removes comments
 
@@ -472,8 +259,6 @@ static asm_error parse_file_to_commands(File* file, Bytecode* bytecode, Labels* 
             emit_asm_error(errors, &err_msg, err);
             asm_err = ASM_PARSE_ARGS_ERR;
         }
-
-        LOG_DEBUG("position = %d", bytecode->position);
     }
     labels->final_size = labels->amount;
 
