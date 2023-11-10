@@ -10,8 +10,10 @@
 #include "../Libs/utils.h"
 #include "../Libs/time_utils.h"
 #include "../common.h"
+
 #include "assembler.h"
 #include "assembler_errors.h"
+#include "assembler_listing.h"
 
 struct Command
 {
@@ -40,13 +42,6 @@ struct Labels
     Label  labels_arr[LABELS_MAX_AMOUNT] = {};
     size_t amount = 0;
     size_t final_size = 0;
-};
-
-const size_t MIN_BYTECODE_CAPACITY = 32;
-struct Bytecode
-{
-    uint8_t* code_array;
-    size_t position;
 };
 
 /**
@@ -326,8 +321,7 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     return err;
 }
 
-// BAH: I CAN USE ONE POINTER
-static bool parse_label(line* op_name, const line* line_ptr)
+bool parse_label(line* op_name, const line* line_ptr)
 {
     bool is_label = false;
     if (op_name->len > 1)
@@ -511,88 +505,6 @@ static asm_error write_bytecode_to_file(const char* output_file_name, Bytecode* 
         return ASM_FILE_CLOSE_ERR;
 
     LOG_INFO("Bytecode has been written!");
-
-    return ASM_NO_ERR;
-}
-
-static char* format_bytecode_string(Bytecode* bytecode)
-{
-    static char buffer[16] = "";
-
-    const uint8_t* cmd_ptr = bytecode->code_array + bytecode->position;
-    size_t buffer_pos = sprintf(buffer, "%llX", *(cmd_t*)cmd_ptr);
-    bytecode->position += sizeof(cmd_t);
-
-    if ((*(cmd_t*)cmd_ptr & ARG_IMM_MASK) || (*(cmd_t*)cmd_ptr & ARG_REG_MASK))
-    {
-        sprintf(buffer + buffer_pos, " %llX", *(arg_t*)(cmd_ptr + sizeof(cmd_t)));
-        bytecode->position += sizeof(arg_t);
-    }
-
-    return buffer;
-}
-
-static asm_error generate_listing(const char* listing_file_name, const File* input_file, const char* output_file_name, Bytecode* bytecode)
-{
-    assert(listing_file_name);
-    assert(input_file);
-    assert(output_file_name);
-    assert(bytecode);
-
-    FILE* file_ptr = fopen(listing_file_name, "w");
-    if (!file_ptr)
-        return ASM_FILE_OPEN_ERR;
-
-    fprintf(file_ptr, "══════════════════════════════════════════════\n");
-
-    fprintf(file_ptr, "  Date: %s\n", get_current_date_str());
-    fprintf(file_ptr, "  Time: %s\n", get_current_time_str());
-    fprintf(file_ptr, " Input: %s\n", input_file->file_name);
-    fprintf(file_ptr, "Output: %s\n", output_file_name);
-
-    fprintf(file_ptr, "══════════════════════════════════════════════\n");
-
-    bytecode->position = 0;
-
-    for (size_t i = 0; i < input_file->line_amount; i++)
-    {
-        fprintf(file_ptr, "%-5d", i + 1);
-        const size_t line_len = get_line_len(input_file->lines_ptrs[i].start);
-
-        if (line_len == 1)
-        {
-            fprintf(file_ptr, "\n");
-            continue;
-        }
-
-        fprintf(file_ptr, "%04llX  ", bytecode->position);
-
-        line* line_ptr = &input_file->lines_ptrs[i];
-
-        size_t op_name_len = 0;
-        wchar_t* op_name_str = get_word(line_ptr->start, &op_name_len);
-        line op_name =  {
-                        .start = op_name_str,
-                        .len = op_name_len
-                        };
-
-        if (parse_label(&op_name, line_ptr))
-        {
-            fprintf(file_ptr, "%12ls", input_file->lines_ptrs[i].start);
-            fprintf(file_ptr, "\n");
-            continue;
-        }
-
-        fprintf(file_ptr, "%-10s", format_bytecode_string(bytecode));
-        fprintf(file_ptr, "%ls", input_file->lines_ptrs[i].start);
-        fprintf(file_ptr, "\n");
-    }
-
-    const int f_close_ret_val = fclose(file_ptr);
-    file_ptr = NULL;
-
-    if (f_close_ret_val)
-        return ASM_FILE_CLOSE_ERR;
 
     return ASM_NO_ERR;
 }

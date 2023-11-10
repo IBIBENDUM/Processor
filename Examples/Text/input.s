@@ -3,7 +3,7 @@ jmp a
 HLT
 
 a:
-out
+                   out
 HLT
 
 a:

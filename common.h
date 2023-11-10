@@ -13,7 +13,7 @@ const size_t VRAM_WIDTH_POS     = 1;   ///< Width  of Virtual RAM frame
 const size_t VRAM_HEIGHT_POS    = 2;   ///< Height of Virtual RAM frame
 const size_t VRAM_OFFSET_POS    = 3;   ///< Number of cells not occupied by VRAM
 
-const int MAX_ARGS_AMOUNT   = 3;  ///< Maximum command arguments amount
+const int MAX_ARGS_AMOUNT       = 3;  ///< Maximum command arguments amount
 /*
        SYSTEM RAM DOCS
   ╔═══════════════════════╗
