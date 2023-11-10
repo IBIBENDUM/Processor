@@ -126,8 +126,23 @@ DEF_CMD(NAME, ___,\
 
 MAKE_OPERATION_CMD(add, +, 1)
 MAKE_OPERATION_CMD(sub, -, 1)
-
 MAKE_OPERATION_CMD(mul, *, 1.0 / FLOAT_COEFFICIENT)
-MAKE_OPERATION_CMD(div, /, FLOAT_COEFFICIENT)
+
+#define MAKE_OPERATION_CMD(NAME, OPERATION, COEFF)\
+
+DEF_CMD(div, ___,
+    {
+        arg_t value_1 = 0;
+        POP(value_1);
+
+        arg_t value_2 = 0;
+        POP(value_2);
+        if (value_1 == 0)
+        {
+            ip = -1;
+            fprintf(stderr, "Division by zero occured!");
+        }
+        PUSH((arg_t) (value_2 * (COEFF) / value_1));
+    })
 
 #undef DEF_CMD
