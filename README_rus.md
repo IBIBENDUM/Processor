@@ -5,6 +5,8 @@
 
 SPU выполняет команды из файла, сформированного ассемблером. Данные хранятся в стеке и оперативной памяти.
 
+Читать на других языках: [English](https://github.com/IBIBENDUM/Processor/blob/main/README.md), [Русский](https://github.com/IBIBENDUM/Processor/blob/main/README_rus.md)
+
 ## Ассемблер
 Пример синтаксиса
 ~~~
