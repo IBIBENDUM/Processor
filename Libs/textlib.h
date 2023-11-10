@@ -57,6 +57,8 @@ typedef struct File
     size_t line_amount;
 } File;
 
+size_t get_line_len(const wchar_t* string);
+
 ssize_t get_file_size(const ssize_t descriptor);
 
 size_t get_char_amount(const wchar_t* const string, const wchar_t ch);

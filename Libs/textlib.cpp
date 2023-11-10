@@ -34,7 +34,7 @@ size_t get_lines_amount(const wchar_t* const string)
     return get_char_amount(string, '\n') + 1;
 }
 
-static size_t get_line_len(const wchar_t* string)
+size_t get_line_len(const wchar_t* string)
 {
     return wcscspn(string, L"\n") + 1;
 }

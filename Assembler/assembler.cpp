@@ -325,6 +325,7 @@ static cmd_error get_args(Command* cmd, Labels* labels, Command_error* cmd_err, 
     return err;
 }
 
+// BAH: I CAN USE ONE POINTER
 static bool parse_label(line* op_name, const line* line_ptr)
 {
     bool is_label = false;
@@ -470,6 +471,7 @@ static asm_error parse_file_to_commands(File* file, Bytecode* bytecode, Labels* 
                 err = emit_command(&cmd, &err_msg, bytecode);
             }
         }
+
         if (err != CMD_NO_ERR)
         {
             emit_asm_error(errors, &err_msg, err);
@@ -497,11 +499,11 @@ static asm_error write_bytecode_to_file(const char* output_file_name, Bytecode* 
     if (!file_ptr)
         return ASM_FILE_OPEN_ERR;
 
-    size_t amount_of_written = fwrite(bytecode->code_array, sizeof(uint8_t), bytecode->position, file_ptr);
+    const size_t amount_of_written = fwrite(bytecode->code_array, sizeof(uint8_t), bytecode->position, file_ptr);
     if (amount_of_written < bytecode->position)
         return ASM_WRITE_ERR;
 
-    int f_close_ret_val = fclose(file_ptr);
+    const int f_close_ret_val = fclose(file_ptr);
     file_ptr = NULL;
 
     if (f_close_ret_val)
@@ -512,17 +514,81 @@ static asm_error write_bytecode_to_file(const char* output_file_name, Bytecode* 
     return ASM_NO_ERR;
 }
 
+static char* format_bytecode_string(Bytecode* bytecode)
+{
+    static char buffer[16] = "";
+
+    const uint8_t* cmd_ptr = bytecode->code_array + bytecode->position;
+    size_t buffer_pos = sprintf(buffer, "%llX", *(cmd_t*)cmd_ptr);
+    bytecode->position += sizeof(cmd_t);
+
+    if ((*(cmd_t*)cmd_ptr & ARG_IMM_MASK) || (*(cmd_t*)cmd_ptr & ARG_REG_MASK))
+    {
+        sprintf(buffer + buffer_pos, " %llX", *(arg_t*)(cmd_ptr + sizeof(cmd_t)));
+        bytecode->position += sizeof(arg_t);
+    }
+
+    return buffer;
+}
+
+static asm_error generate_listing(const char* listing_file_name, const File* input_file, Bytecode* bytecode)
+{
+    FILE* file_ptr = fopen(listing_file_name, "w");
+    if (!file_ptr)
+        return ASM_FILE_OPEN_ERR;
+
+    fprintf(file_ptr, "Automated generated listing bla bla bla\n");
+    // Add time file etc
+
+    bytecode->position = 0;
+
+    for (size_t i = 0; i < input_file->line_amount; i++)
+    {
+        fprintf(file_ptr, "%-5d", i + 1);
+        const size_t line_len = get_line_len(input_file->lines_ptrs[i].start);
+
+        if (line_len == 1)
+        {
+            fprintf(file_ptr, "\n");
+            continue;
+        }
+
+        fprintf(file_ptr, "%04llX ", bytecode->position);
+
+        line* line_ptr = &input_file->lines_ptrs[i];
+
+        size_t op_name_len = 0;
+        wchar_t* op_name_str = get_word(line_ptr->start, &op_name_len);
+        line op_name =  {
+                        .start = op_name_str,
+                        .len = op_name_len
+                        };
+
+        if (parse_label(&op_name, line_ptr))
+        {
+            fprintf(file_ptr, "%12ls", input_file->lines_ptrs[i].start);
+            fprintf(file_ptr, "\n");
+            continue;
+        }
+
+        fprintf(file_ptr, "%-10s", format_bytecode_string(bytecode));
+        fprintf(file_ptr, "%ls", input_file->lines_ptrs[i].start);
+        fprintf(file_ptr, "\n");
+    }
+
+    return ASM_NO_ERR;
+}
+
 static asm_error convert_text_to_binary(File* input_file, const char* output_file_name)
 {
     assert(input_file);
     assert(output_file_name);
 
     LOG_INFO("Prepare text for converting...");
-    tokenize_lines(input_file);
-    const size_t line_amount = input_file->line_amount;
 
-    // Find maximum type len and reserve place for the largest
-    // BAH: Make with realloc
+    tokenize_lines(input_file); // Replace '\0' with '\n'
+
+    const size_t line_amount = input_file->line_amount;
     Bytecode bytecode =
     {
         .code_array = (uint8_t*) calloc(MIN_BYTECODE_CAPACITY, sizeof(uint8_t)),
@@ -546,6 +612,9 @@ static asm_error convert_text_to_binary(File* input_file, const char* output_fil
     }
 
     write_bytecode_to_file(output_file_name, &bytecode);
+
+    const char* listing_file_name = "listing_test.txt"; // FOR TEST
+    generate_listing(listing_file_name, input_file, &bytecode);
 
     free_and_null(bytecode.code_array);
 
